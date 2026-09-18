@@ -65,5 +65,11 @@ Grant-TeknofestIisReadAccess -Path $full -AppPoolName $pool
 Write-Host "Site-level rewrite kurallarina dokunulmadi." -ForegroundColor Green
 
 if (-not $SkipHealthCheck) {
-    & (Join-Path $PSScriptRoot "health_check.ps1") -LocalOnly -SiteName $resolvedName
+    try {
+        & (Join-Path $PSScriptRoot "health_check.ps1") -LocalOnly -SiteName $resolvedName
+    }
+    catch {
+        Write-Host "Application kayitli. Yerel health su an basarisiz: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "Tekrar: .\tool\health_check.ps1 -LocalOnly" -ForegroundColor Yellow
+    }
 }

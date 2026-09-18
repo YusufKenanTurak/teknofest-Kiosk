@@ -104,8 +104,8 @@ function Get-TeknofestLocalHealthTargets {
         [string]$HostName = $script:TeknofestPublicHost
     )
 
-    $targets = New-Object System.Collections.Generic.List[object]
-    $seen = New-Object 'System.Collections.Generic.HashSet[string]'
+    $targets = @()
+    $seen = @{}
     foreach ($binding in @($Site.bindings.Collection)) {
         $info = [string]$binding.bindingInformation
         if ($info -notmatch ':(\d+):(.*)$') {
@@ -121,14 +121,32 @@ function Get-TeknofestLocalHealthTargets {
             continue
         }
         $url = "${scheme}://127.0.0.1:${port}/${ApplicationName}"
-        if (-not $seen.Add("$url|$header")) {
+        $key = "$url|$header"
+        if ($seen.ContainsKey($key)) {
             continue
         }
-        $targets.Add([pscustomobject]@{
-                Url        = $url
-                HostHeader = $header
-                Insecure   = ($scheme -eq "https")
-            }) | Out-Null
+        $seen[$key] = $true
+        $targets += [pscustomobject]@{
+            Url        = $url
+            HostHeader = $header
+            Insecure   = ($scheme -eq "https")
+        }
+    }
+
+    foreach ($fallback in @(
+            @{ Url = "http://127.0.0.1/${ApplicationName}";  Insecure = $false },
+            @{ Url = "https://127.0.0.1/${ApplicationName}"; Insecure = $true }
+        )) {
+        $key = "$($fallback.Url)|$HostName"
+        if ($seen.ContainsKey($key)) {
+            continue
+        }
+        $seen[$key] = $true
+        $targets += [pscustomobject]@{
+            Url        = $fallback.Url
+            HostHeader = $HostName
+            Insecure   = [bool]$fallback.Insecure
+        }
     }
     return @($targets)
 }

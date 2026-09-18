@@ -33,22 +33,22 @@ function Get-Header([string]$Headers, [string]$Name) {
 function Invoke-CurlHead {
     param(
         [Parameter(Mandatory = $true)][string]$Url,
-        [string]$HostHeader,
-        [switch]$Insecure
+        [string]$RequestHost,
+        [bool]$SkipCertCheck
     )
 
-    $args = @(
+    $curlArgs = @(
         "-sS", "-I", "--max-redirs", "0",
         "--connect-timeout", "5", "--max-time", "20"
     )
-    if ($Insecure) {
-        $args += "-k"
+    if ($SkipCertCheck) {
+        $curlArgs += "-k"
     }
-    if (-not [string]::IsNullOrWhiteSpace($HostHeader)) {
-        $args += @("-H", "Host: $HostHeader")
+    if (-not [string]::IsNullOrWhiteSpace($RequestHost)) {
+        $curlArgs += @("-H", "Host: $RequestHost")
     }
-    $args += $Url
-    $output = & curl.exe @args 2>&1
+    $curlArgs += $Url
+    $output = & curl.exe @curlArgs 2>&1
     $text = ($output | ForEach-Object { "$_" }) -join "`n"
     return [pscustomobject]@{
         Url      = $Url
@@ -58,75 +58,63 @@ function Invoke-CurlHead {
     }
 }
 
-function Test-ReachableHealthBase {
-    param($Probe)
-
-    $head = Invoke-CurlHead -Url $Probe.Url -HostHeader $Probe.HostHeader -Insecure:$Probe.Insecure
-    if ($head.ExitCode -ne 0 -or $head.Status -eq 0) {
-        return $null
-    }
-    return $head
-}
-
-$probes = New-Object System.Collections.Generic.List[object]
+$probes = @()
 
 if (-not $LocalOnly -and -not [string]::IsNullOrWhiteSpace($BaseUrl)) {
-    $probes.Add([pscustomobject]@{
-            Url        = $BaseUrl.TrimEnd("/")
-            HostHeader = $null
-            Insecure   = $false
-            Label      = "public"
-        }) | Out-Null
+    $probes += [pscustomobject]@{
+        Url         = $BaseUrl.TrimEnd("/")
+        RequestHost = $null
+        SkipCert    = $false
+        Label       = "public"
+    }
 }
 
-$localTried = $false
 try {
     . (Join-Path $PSScriptRoot "iis_site.ps1")
     Import-Module WebAdministration -ErrorAction Stop
     $site = Resolve-TeknofestIisSite -SiteName $SiteName
     foreach ($target in @(Get-TeknofestLocalHealthTargets -Site $site)) {
-        $probes.Add([pscustomobject]@{
-                Url        = $target.Url
-                HostHeader = $target.HostHeader
-                Insecure   = [bool]$target.Insecure
-                Label      = "local $($target.Url) Host:$($target.HostHeader)"
-            }) | Out-Null
+        $probes += [pscustomobject]@{
+            Url         = $target.Url
+            RequestHost = $target.HostHeader
+            SkipCert    = [bool]$target.Insecure
+            Label       = "local $($target.Url) Host:$($target.HostHeader)"
+        }
     }
-    $localTried = $true
 }
 catch {
     if ($LocalOnly) {
-        throw "Yerel IIS health icin site cozulemedi: $($_.Exception.Message)"
+        Write-Host "Binding listesi alinamadi, 127.0.0.1 deneniyor: $($_.Exception.Message)" -ForegroundColor Yellow
     }
 }
 
 if ($probes.Count -eq 0) {
-    $probes.Add([pscustomobject]@{
-            Url        = "http://127.0.0.1/teknofest"
-            HostHeader = $HostHeader
-            Insecure   = $false
-            Label      = "local http 80"
-        }) | Out-Null
-    $probes.Add([pscustomobject]@{
-            Url        = "https://127.0.0.1/teknofest"
-            HostHeader = $HostHeader
-            Insecure   = $true
-            Label      = "local https 443"
-        }) | Out-Null
+    $probes += [pscustomobject]@{
+        Url         = "http://127.0.0.1/teknofest"
+        RequestHost = $HostHeader
+        SkipCert    = $false
+        Label       = "local http 80"
+    }
+    $probes += [pscustomobject]@{
+        Url         = "https://127.0.0.1/teknofest"
+        RequestHost = $HostHeader
+        SkipCert    = $true
+        Label       = "local https 443"
+    }
 }
 
 $chosen = $null
-$failures = New-Object System.Collections.Generic.List[string]
+$failures = @()
 foreach ($probe in $probes) {
     Write-Host "Denenecek: $($probe.Label)  $($probe.Url)" -ForegroundColor DarkGray
-    $hit = Test-ReachableHealthBase $probe
-    if ($null -eq $hit) {
-        $failures.Add("$($probe.Label): baglanilamadi") | Out-Null
+    $hit = Invoke-CurlHead -Url $probe.Url -RequestHost $probe.RequestHost -SkipCertCheck ([bool]$probe.SkipCert)
+    if ($hit.ExitCode -ne 0 -or $hit.Status -eq 0) {
+        $failures += "$($probe.Label): baglanilamadi (curl $($hit.ExitCode))"
         continue
     }
     $chosen = [pscustomobject]@{
-        Probe  = $probe
-        Head   = $hit
+        Probe   = $probe
+        Head    = $hit
         BaseUrl = $probe.Url.TrimEnd("/")
     }
     if ($hit.Status -eq 200) {
@@ -135,20 +123,20 @@ foreach ($probe in $probes) {
 }
 
 if ($null -eq $chosen) {
-    $hint = "IIS application kayitli mi? Bu sunucu public hostname'e (testapp.limak.com.tr) cikamayabilir; yerel health kullanin."
+    $hint = "IIS application kayitli mi? Bu sunucu public hostname'e cikamayabilir; yerel health kullanin."
     throw "Health baglantisi yok.`n$($failures -join "`n")`n$hint"
 }
 
 $base = $chosen.BaseUrl
-$hostHdr = $chosen.Probe.HostHeader
-$insecure = [bool]$chosen.Probe.Insecure
+$requestHost = $chosen.Probe.RequestHost
+$skipCert = [bool]$chosen.Probe.SkipCert
 $pwaStatus = $chosen.Head.Status
 if ($pwaStatus -ne 200) {
     throw "PWA HTTP $pwaStatus  $base`n$($chosen.Head.Text)"
 }
 
 $versionUrl = "$base/app/version.json"
-$versionHead = Invoke-CurlHead -Url $versionUrl -HostHeader $hostHdr -Insecure:$insecure
+$versionHead = Invoke-CurlHead -Url $versionUrl -RequestHost $requestHost -SkipCertCheck $skipCert
 if ($versionHead.Status -ne 200) {
     throw "version.json HTTP $($versionHead.Status)`n$($versionHead.Text)"
 }
@@ -159,10 +147,9 @@ if ($versionType -notmatch "json") {
 
 $tmp = Join-Path $env:TEMP "teknofest-version-check.json"
 $getArgs = @("-sS", "--connect-timeout", "5", "--max-time", "20", "-o", $tmp)
-if ($insecure) { $getArgs += "-k" }
-if (-not [string]::IsNullOrWhiteSpace($hostHdr)) { $getArgs += @("-H", "Host: $hostHdr") }
+if ($skipCert) { $getArgs += "-k" }
+if (-not [string]::IsNullOrWhiteSpace($requestHost)) { $getArgs += @("-H", "Host: $requestHost") }
 $getArgs += $versionUrl
-$ErrorActionPreference = "Continue"
 & curl.exe @getArgs | Out-Null
 if ($LASTEXITCODE -ne 0) {
     throw "version.json indirilemedi (curl $LASTEXITCODE)"
@@ -177,7 +164,7 @@ if ([string]::IsNullOrWhiteSpace([string]$parsed.version)) {
 }
 
 $apkUrl = "$base/app/downloads/teknofest-yatay-latest.apk"
-$apkHead = Invoke-CurlHead -Url $apkUrl -HostHeader $hostHdr -Insecure:$insecure
+$apkHead = Invoke-CurlHead -Url $apkUrl -RequestHost $requestHost -SkipCertCheck $skipCert
 $apkStatus = $apkHead.Status
 $apkType = Get-Header $apkHead.Text "Content-Type"
 
