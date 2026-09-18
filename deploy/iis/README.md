@@ -18,8 +18,10 @@ PWA (`publish\`) and APK (`apk\teknofest-yatay-latest.apk`) are separate
 artifacts. The live download URL is still
 `/teknofest/app/downloads/teknofest-yatay-latest.apk` after `copy_apk.ps1`.
 
-Desktop is a user profile path. `iis_register_application.ps1` grants
-`IIS_IUSRS`, `IUSR`, and the site app pool RX on `publish\`.
+Desktop is a user profile path. IIS ApplicationPoolIdentity cannot traverse
+`C:\Users\yturak` / `Desktop` unless given this-folder-only RX. That is
+500.19 `0x80070005` (cannot read `web.config`). `server_up.ps1` / `Grant-TeknofestIisReadAccess`
+grants traverse on those parents, then `(OI)(CI)RX` on `publish\`.
 
 ## Do not edit the site-level rewrite map
 
@@ -39,18 +41,14 @@ Teknofest is isolated as an **IIS Application** named `teknofest` under the exis
 ## Register (once, Administrator PowerShell on the IIS host)
 
 ```powershell
-cd C:\Users\yturak\Desktop\teknofest-Kiosk
-.\tool\iis_inspect.ps1
-.\tool\iis_register_application.ps1
+cd C:\Users\yturak\Desktop\teknofest-Kiosk; git pull --ff-only origin main; .\tool\server_up.ps1 -SkipGitPull
 ```
 
-Do **not** pass `-SiteName "<mevcut site adi>"`. The script resolves the site
-from the `testapp.limak.com.tr` binding or from EnduransStaff/LTStaff.
+Do **not** paste several lines (PowerShell `>>` runs `health_check` before `git pull`).
+Do **not** pass `-SiteName "<mevcut site adi>"`.
 
 This host often cannot connect to `https://testapp.limak.com.tr` (curl 28).
-Use `.\tool\health_check.ps1 -LocalOnly` after `git pull` and deploy, not before.
-
-HTTP 500: `.\tool\iis_diagnose.ps1`. `publish\web.config` uses `<clear />` so site-level EnduransStaff/LTStaff rewrite rules are not inherited.
+`server_up.ps1` health-checks `127.0.0.1` with the site Host header.
 
 If `/teknofest` was previously registered under `inetpub`, the same command
 updates the application physical path to `publish\` on the Desktop checkout.

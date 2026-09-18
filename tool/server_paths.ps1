@@ -100,6 +100,72 @@ function Assert-TeknofestApkFile {
     return $full
 }
 
+function Get-TeknofestIisIdentities {
+    param([string]$AppPoolName)
+
+    if ([string]::IsNullOrWhiteSpace($AppPoolName)) {
+        try {
+            Import-Module WebAdministration -ErrorAction Stop
+            $app = @(Get-WebApplication -ErrorAction Stop | Where-Object { $_.Path -eq "/teknofest" }) | Select-Object -First 1
+            if ($null -ne $app -and -not [string]::IsNullOrWhiteSpace([string]$app.applicationPool)) {
+                $AppPoolName = [string]$app.applicationPool
+            }
+        }
+        catch {
+        }
+    }
+
+    $ids = @("IIS_IUSRS", "IUSR")
+    if (-not [string]::IsNullOrWhiteSpace($AppPoolName)) {
+        $ids += "IIS AppPool\$AppPoolName"
+    }
+    return @($ids | Select-Object -Unique)
+}
+
+function Get-TeknofestIisTraverseParents {
+    param([Parameter(Mandatory = $true)][string]$LeafPath)
+
+    $stop = [System.IO.Path]::GetFullPath("C:\Users").TrimEnd("\")
+    $parents = @()
+    $cursor = Split-Path -Parent ([System.IO.Path]::GetFullPath($LeafPath))
+    while (-not [string]::IsNullOrWhiteSpace($cursor)) {
+        $norm = [System.IO.Path]::GetFullPath($cursor).TrimEnd("\")
+        if ($norm.Length -le 3) {
+            break
+        }
+        if ($norm.Equals($stop, [System.StringComparison]::OrdinalIgnoreCase)) {
+            break
+        }
+        $parents += $norm
+        $cursor = Split-Path -Parent $norm
+    }
+    if ($parents.Count -gt 1) {
+        [Array]::Reverse($parents)
+    }
+    return @($parents)
+}
+
+function Invoke-TeknofestIcaclsGrant {
+    param(
+        [Parameter(Mandatory = $true)][string]$Target,
+        [Parameter(Mandatory = $true)][string]$Identity,
+        [Parameter(Mandatory = $true)][string]$Rights,
+        [switch]$Recurse
+    )
+
+    $spec = "${Identity}:${Rights}"
+    $icaclsArgs = @($Target, "/grant", $spec, "/C")
+    if ($Recurse) {
+        $icaclsArgs += "/T"
+    }
+    $output = & icacls.exe @icaclsArgs 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ACL uyarisi ($spec -> $Target): exit $LASTEXITCODE $output" -ForegroundColor Yellow
+        return $false
+    }
+    return $true
+}
+
 function Grant-TeknofestIisReadAccess {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -111,18 +177,27 @@ function Grant-TeknofestIisReadAccess {
         throw "ACL icin path yok: $full"
     }
 
-    $grants = [System.Collections.Generic.List[string]]::new()
-    $grants.Add("IIS_IUSRS:(OI)(CI)RX")
-    $grants.Add("IUSR:(OI)(CI)RX")
-    if (-not [string]::IsNullOrWhiteSpace($AppPoolName)) {
-        $grants.Add("IIS AppPool\${AppPoolName}:(OI)(CI)RX")
+    $identities = @(Get-TeknofestIisIdentities -AppPoolName $AppPoolName)
+    $parents = @(Get-TeknofestIisTraverseParents -LeafPath $full)
+
+    Write-Host "IIS ACL: parent traverse (Desktop profili) + $full" -ForegroundColor Cyan
+    foreach ($parent in $parents) {
+        foreach ($id in $identities) {
+            $null = Invoke-TeknofestIcaclsGrant -Target $parent -Identity $id -Rights "(RX)"
+        }
+        Write-Host "  traverse RX  $parent" -ForegroundColor DarkGray
     }
 
-    foreach ($grant in $grants) {
-        & icacls.exe $full /grant $grant /C /Q | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "ACL uyarisi ($grant): icacls exit $LASTEXITCODE" -ForegroundColor Yellow
+    foreach ($id in $identities) {
+        $null = Invoke-TeknofestIcaclsGrant -Target $full -Identity $id -Rights "(OI)(CI)RX"
+    }
+
+    $webConfig = Join-Path $full "web.config"
+    if (Test-Path $webConfig) {
+        foreach ($id in $identities) {
+            $null = Invoke-TeknofestIcaclsGrant -Target $webConfig -Identity $id -Rights "(R)"
         }
     }
-    Write-Host "IIS okuma ACL uygulandi: $full" -ForegroundColor Green
+
+    Write-Host "IIS okuma ACL uygulandi: $full  ($($identities -join ', '))" -ForegroundColor Green
 }

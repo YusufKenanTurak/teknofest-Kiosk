@@ -41,6 +41,20 @@ else {
     Write-Host "URL Rewrite: $($rewrite.Image)" -ForegroundColor Green
 }
 
+Write-Host "ACL (IIS_IUSRS / AppPool Desktop'a giremezse 500.19 0x80070005):" -ForegroundColor Cyan
+foreach ($aclPath in @(
+        "C:\Users\yturak",
+        "C:\Users\yturak\Desktop",
+        (Split-Path $publish -Parent),
+        $publish,
+        (Join-Path $publish "web.config")
+    )) {
+    if (Test-Path $aclPath) {
+        Write-Host "--- icacls $aclPath"
+        & icacls.exe $aclPath
+    }
+}
+
 $url = "http://127.0.0.1/teknofest/"
 $hostHeader = "testapp.limak.com.tr"
 $out = Join-Path $env:TEMP "teknofest-iis-diagnose.html"
@@ -54,6 +68,9 @@ if (Test-Path $out) {
     $html = [System.IO.File]::ReadAllText($out)
     if ($html -match '<title>([^<]+)</title>') {
         Write-Host "HTML title: $($Matches[1])" -ForegroundColor Yellow
+    }
+    if ($html -match '0x80070005|insufficient permissions') {
+        Write-Host "500.19 ACL: .\tool\server_up.ps1  (parent traverse + publish RX)" -ForegroundColor Red
     }
     Write-Host "Govde kaydi: $out"
 }

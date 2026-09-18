@@ -185,14 +185,13 @@ APK git’te yoktur; `apk\` klasörünü bu PC’den kopyalayın. PWA zip APK i�
 
 ### 3) Sunucu — Flutter yok (Administrator PowerShell)
 
-```powershell
-cd C:\Users\yturak\Desktop\teknofest-Kiosk
-git pull --ff-only origin main
+Tek satır. Birden fazla satır yapıştırmayın (`>>` health’i pull’dan önce çalıştırır).
 
-.\tool\iis_inspect.ps1
-.\tool\deploy.ps1 -SkipPwaBuild -SkipApk
-.\tool\iis_register_application.ps1
+```powershell
+cd C:\Users\yturak\Desktop\teknofest-Kiosk; git pull --ff-only origin main; .\tool\server_up.ps1 -SkipGitPull
 ```
+
+`server_up.ps1` Desktop parent ACL (IIS 500.19 / 0x80070005), `/teknofest` kaydı ve yerel health yapar.
 
 `-SiteName "<mevcut site adi>"` yazmayın. Script binding’den (`testapp.limak.com.tr`)
 veya EnduransStaff/LTStaff uygulamasından siteyi kendi bulur.
@@ -212,15 +211,7 @@ Yerel kontrol:
 .\tool\health_check.ps1 -LocalOnly
 ```
 
-Komutları PowerShell `>>` ile tek satırda yapıştırmayın; `health_check` `git pull` ve `deploy`’dan **sonra** çalışır.
-
-HTTP 500 olursa IIS hata başlığı artık health çıktısında görünür. Ayrıntı:
-
-```powershell
-.\tool\iis_diagnose.ps1
-```
-
-Yaygın neden: site-level rewrite kurallarının `/teknofest` uygulamasına miras kalması (500.19, duplicate rule name). `publish\web.config` `<clear />` ile bunu keser. Site `web.config`’ine Teknofest kuralı yapıştırmayın.
+500.19 `0x80070005` / insufficient permissions: IIS AppPool `C:\Users\yturak\Desktop` üstünden geçemez. `server_up.ps1` parent klasörlere this-folder-only RX verir; `publish\` ve `web.config` RX/R alır. Site `web.config`’ine Teknofest kuralı yapıştırmayın.
 
 Dışarıdan (bu PC / internet):
 
@@ -266,9 +257,10 @@ C:\Users\yturak\Desktop\teknofest-Kiosk\
 | APK `text/html` | Aynı; MIME `application/vnd.android.package-archive` |
 | 404 tüm `/teknofest` | IIS application yok veya nginx `/teknofest` geçirmiyor |
 | curl 28 / timeout | IIS kutusundan public hostname açılmaz; `health_check.ps1 -LocalOnly` |
-| PWA HTTP 500 | `iis_diagnose.ps1`; URL Rewrite yoksa veya site rewrite mirası (500.19) |
+| PWA HTTP 500.19 `0x80070005` | Desktop ACL; `server_up.ps1` parent traverse + publish RX |
+| PWA HTTP 500.19 duplicate | site rewrite mirası; `publish\web.config` `<clear />` |
 | Parent node has no children | `-SiteName "<mevcut site adi>"` literal; `iis_inspect.ps1` kullanın |
-| 401.3 / boş site | Desktop ACL; `iis_register_application.ps1` app pool’a RX verir |
+| 401.3 / boş site | aynı ACL; `server_up.ps1` |
 | APK 404 | `apk\teknofest-yatay-latest.apk` kopyalanmadı; PWA zip APK taşımaz |
 | Eski APK iniyor | APK `no-store`; tarayıcı değil kiosk DownloadManager kullanır |
 | SW başka uygulamayı bozuyor | SW `/teknofest/flutter_service_worker.js` — `Service-Worker-Allowed: /` header’ı eklemeyin |

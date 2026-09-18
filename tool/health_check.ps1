@@ -261,7 +261,19 @@ $requestHost = $chosen.Probe.RequestHost
 $skipCert = [bool]$chosen.Probe.SkipCert
 $pwaStatus = $chosen.Head.Status
 if ($pwaStatus -ne 200) {
-    throw "PWA HTTP $pwaStatus  $base`n$($chosen.Head.Text)"
+    $detail = $chosen.Head.Text
+    if ($detail -match '0x80070005|insufficient permissions') {
+        throw @"
+PWA HTTP 500.19  $base
+IIS AppPool Desktop'taki web.config'i okuyamiyor (0x80070005).
+
+Tek satir, Administrator PowerShell (sirayi degistirmeyin):
+  cd C:\Users\yturak\Desktop\teknofest-Kiosk; git pull --ff-only origin main; .\tool\server_up.ps1 -SkipGitPull
+
+$detail
+"@
+    }
+    throw "PWA HTTP $pwaStatus  $base`n$detail"
 }
 
 $versionUrl = "$base/app/version.json"
