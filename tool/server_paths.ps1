@@ -125,9 +125,16 @@ function Get-TeknofestIisIdentities {
 function Get-TeknofestIisTraverseParents {
     param([Parameter(Mandatory = $true)][string]$LeafPath)
 
+    $profileRoot = [System.IO.Path]::GetFullPath("C:\Users\yturak").TrimEnd("\")
     $stop = [System.IO.Path]::GetFullPath("C:\Users").TrimEnd("\")
+    $leaf = [System.IO.Path]::GetFullPath($LeafPath)
+    if (-not $leaf.StartsWith($profileRoot + "\", [System.StringComparison]::OrdinalIgnoreCase) -and
+        -not $leaf.Equals($profileRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return @()
+    }
+
     $parents = @()
-    $cursor = Split-Path -Parent ([System.IO.Path]::GetFullPath($LeafPath))
+    $cursor = Split-Path -Parent $leaf
     while (-not [string]::IsNullOrWhiteSpace($cursor)) {
         $norm = [System.IO.Path]::GetFullPath($cursor).TrimEnd("\")
         if ($norm.Length -le 3) {
@@ -158,9 +165,17 @@ function Invoke-TeknofestIcaclsGrant {
     if ($Recurse) {
         $icaclsArgs += "/T"
     }
-    $output = & icacls.exe @icaclsArgs 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ACL uyarisi ($spec -> $Target): exit $LASTEXITCODE $output" -ForegroundColor Yellow
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & icacls.exe @icaclsArgs 2>&1
+        $code = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+    if ($code -ne 0) {
+        Write-Host "ACL uyarisi ($spec -> $Target): exit $code $output" -ForegroundColor Yellow
         return $false
     }
     return $true

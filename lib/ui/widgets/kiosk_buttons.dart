@@ -169,3 +169,43 @@ class OutlineActionButton extends StatelessWidget {
     );
   }
 }
+
+class KioskTextAction extends StatelessWidget {
+  const KioskTextAction({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.enabled = true,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = KioskMetrics.of(MediaQuery.sizeOf(context));
+    return TextButton(
+      onPressed: enabled ? onPressed : null,
+      style: TextButton.styleFrom(
+        foregroundColor: KioskColors.cream.withValues(alpha: 0.62),
+        disabledForegroundColor: KioskColors.cream.withValues(alpha: 0.28),
+        padding: EdgeInsets.symmetric(
+          horizontal: metrics.sp(12),
+          vertical: metrics.sp(6),
+        ),
+        minimumSize: Size(metrics.sp(44), metrics.sp(28)),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        textStyle: TextStyle(
+          fontSize: metrics.sp(15),
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.1,
+          decoration: TextDecoration.underline,
+          decorationColor: KioskColors.cream.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Text(label),
+    );
+  }
+}

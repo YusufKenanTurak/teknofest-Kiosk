@@ -220,7 +220,7 @@ void main() {
     expect(find.text('İnşaat Mühendisliği'), findsOneWidget);
   });
 
-  testWidgets('idle timeout shows timeout copy then returns to start', (
+  testWidgets('idle timeout shows continue prompt then returns to start', (
     tester,
   ) async {
     final controller = QuizController(
@@ -237,10 +237,82 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.byKey(const Key('timeout-title')), findsOneWidget);
     expect(find.text(KioskCopy.timeoutTitle), findsOneWidget);
+    expect(find.text(KioskCopy.timeoutBody), findsOneWidget);
+    expect(find.text(KioskCopy.continueTestAction), findsOneWidget);
+    expect(find.text(KioskCopy.returnHomeAction), findsOneWidget);
+    expect(find.text('30'), findsNothing);
+    expect(find.byKey(const Key('continue-test-button')), findsOneWidget);
+    expect(find.byKey(const Key('return-home-action')), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text(QuizCatalog.startTitle), findsOneWidget);
     expect(find.text('SORU 1'), findsNothing);
+  });
+
+  testWidgets('continue CTA resumes the paused question', (tester) async {
+    final controller = QuizController(
+      advanceDelay: Duration.zero,
+      calculatingDelay: Duration.zero,
+      idleTimeout: const Duration(milliseconds: 50),
+      timeoutDisplayDuration: const Duration(seconds: 15),
+    );
+    await pumpApp(tester, controller: controller);
+    await tester.tap(find.byKey(const Key('start-button')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('option-A')));
+    await tester.pump();
+    expect(find.text('SORU 2'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text(KioskCopy.continueTestAction), findsOneWidget);
+    expect(
+      find.text('${QuizController.continuePromptSeconds}'),
+      findsOneWidget,
+    );
+    expect(find.text('30'), findsNothing);
+
+    final cta = tester.getRect(find.byKey(const Key('continue-test-button')));
+    final home = tester.getRect(find.byKey(const Key('return-home-action')));
+    expect(home.top, greaterThan(cta.bottom + 8));
+
+    await tester.tap(find.byKey(const Key('continue-test-button')));
+    await tester.pump();
+
+    expect(find.text('SORU 2'), findsOneWidget);
+    expect(controller.currentIndex, 1);
+    expect(controller.answers[0], isNotNull);
+    expect(find.text(KioskCopy.continueTestAction), findsNothing);
+    controller.restart();
+  });
+
+  testWidgets('home text on continue prompt clears the session', (
+    tester,
+  ) async {
+    final controller = QuizController(
+      advanceDelay: Duration.zero,
+      calculatingDelay: Duration.zero,
+      idleTimeout: const Duration(milliseconds: 50),
+      timeoutDisplayDuration: const Duration(seconds: 15),
+    );
+    await pumpApp(tester, controller: controller);
+    await tester.tap(find.byKey(const Key('start-button')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('option-A')));
+    await tester.pump();
+
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byKey(const Key('return-home-action')));
+    await tester.pump();
+
+    expect(find.text(QuizCatalog.startTitle), findsOneWidget);
+    expect(controller.phase, QuizPhase.start);
+    expect(controller.answers.every((answer) => answer == null), isTrue);
+
+    await tester.tap(find.byKey(const Key('start-button')));
+    await tester.pump();
+    expect(find.text('SORU 1'), findsOneWidget);
+    expect(controller.answers.every((answer) => answer == null), isTrue);
+    controller.restart();
   });
 
   testWidgets('result CTAs stay above the kiosk footer on compact screens', (
@@ -294,7 +366,9 @@ void main() {
         reason: 'CTA must sit above footer at $size (cta=$cta footer=$footer)',
       );
 
-      final badge = tester.getSize(find.byKey(const Key('ministry-logo-badge')));
+      final badge = tester.getSize(
+        find.byKey(const Key('ministry-logo-badge')),
+      );
       expect(
         badge.width,
         badge.height,

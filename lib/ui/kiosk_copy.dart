@@ -23,8 +23,9 @@ class KioskCopy {
 
   static const String resultEyebrow = 'SANA EN YAKIN MÜHENDİSLİK ALANI';
 
-  static const String timeoutTitle = 'Bir süre işlem yapılmadı.';
-  static const String timeoutBody = 'Ana ekrana yönlendiriliyorsunuz...';
-
-  static const int idleTimeoutSeconds = 30;
+  static const String timeoutTitle = 'Teste devam etmek ister misin?';
+  static const String timeoutBody =
+      'Devam etmek için aşağıdaki butona dokunabilirsin.';
+  static const String continueTestAction = 'TESTE DEVAM ET';
+  static const String returnHomeAction = 'Ana ekrana dön';
 }

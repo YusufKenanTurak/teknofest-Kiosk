@@ -13,11 +13,21 @@ enum QuizPhase { start, question, calculating, result, timeout }
 /// In-memory session for a single kiosk visitor.
 /// Scoring stays local. Optional [QuizTelemetry] is fire-and-forget.
 class QuizController extends ChangeNotifier {
+  static const int idleTimeoutSeconds = 30;
+  static const int continuePromptSeconds = 15;
+
+  static const Duration defaultIdleTimeout = Duration(
+    seconds: idleTimeoutSeconds,
+  );
+  static const Duration defaultContinuePrompt = Duration(
+    seconds: continuePromptSeconds,
+  );
+
   QuizController({
     this.advanceDelay = const Duration(milliseconds: 520),
     this.calculatingDelay = const Duration(milliseconds: 2600),
-    this.idleTimeout = const Duration(seconds: 30),
-    this.timeoutDisplayDuration = const Duration(seconds: 4),
+    this.idleTimeout = defaultIdleTimeout,
+    this.timeoutDisplayDuration = defaultContinuePrompt,
     QuizTelemetry? telemetry,
   }) : _telemetry = telemetry ?? const NoopQuizTelemetry() {
     _resetSession();
@@ -32,30 +42,37 @@ class QuizController extends ChangeNotifier {
   /// Delay on the "Rotan belirleniyor" interstitial after question 15.
   final Duration calculatingDelay;
 
-  /// Inactivity window after which the session is cleared.
+  /// Inactivity window that opens the continue prompt, not home.
   /// [Duration.zero] disables idle timeout (used by automated tests).
   final Duration idleTimeout;
 
-  /// How long the timeout interstitial stays visible before returning to start.
+  /// Continue-prompt countdown after idle timeout.
+  /// [Duration.zero] skips the prompt and returns to start (tests).
   final Duration timeoutDisplayDuration;
 
   QuizPhase _phase = QuizPhase.start;
+  QuizPhase? _phaseBeforeTimeout;
   int _currentIndex = 0;
   late Map<EngineeringField, int> _scores;
   late List<EngineeringField?> _answers;
   TestResult? _result;
   int? _highlightedOptionIndex;
   bool _acceptingInput = true;
+  bool _timeoutTransitionLocked = false;
+  int _continueRemainingSeconds = 0;
   Timer? _advanceTimer;
   Timer? _calculatingTimer;
   Timer? _idleTimer;
-  Timer? _timeoutDisplayTimer;
+  Timer? _continueTimer;
 
   QuizPhase get phase => _phase;
   int get currentIndex => _currentIndex;
   bool get acceptingInput => _acceptingInput;
   int? get highlightedOptionIndex => _highlightedOptionIndex;
   TestResult? get result => _result;
+  int get continueRemainingSeconds => _continueRemainingSeconds;
+  bool get canActOnContinuePrompt =>
+      _phase == QuizPhase.timeout && !_timeoutTransitionLocked;
   Map<EngineeringField, int> get scores =>
       Map<EngineeringField, int>.unmodifiable(_scores);
   List<EngineeringField?> get answers =>
@@ -141,16 +158,31 @@ class QuizController extends ChangeNotifier {
   /// Called on any pointer interaction so a walk-away visitor cannot leave
   /// a half-finished test on screen.
   void registerInteraction() {
-    if (_phase == QuizPhase.timeout) {
-      restart();
+    if (_phase == QuizPhase.start || _phase == QuizPhase.timeout) {
       return;
     }
     _armIdleTimer();
   }
 
+  /// Resume the paused test from the continue prompt. Same question and answers.
+  void continueTest() {
+    if (!_beginTimeoutTransition()) {
+      return;
+    }
+    final resume = _phaseBeforeTimeout ?? QuizPhase.question;
+    _phaseBeforeTimeout = null;
+    _continueRemainingSeconds = 0;
+    _timeoutTransitionLocked = false;
+    _resumeAfterContinue(resume);
+  }
+
   void finish() => restart();
 
   void restart() {
+    if (_phase == QuizPhase.timeout) {
+      _goHomeFromTimeout();
+      return;
+    }
     if (_phase == QuizPhase.question || _phase == QuizPhase.calculating) {
       _telemetry.testAbandoned();
     }
@@ -224,20 +256,115 @@ class QuizController extends ChangeNotifier {
     if (_phase == QuizPhase.start || _phase == QuizPhase.timeout) {
       return;
     }
-    if (_phase == QuizPhase.question || _phase == QuizPhase.calculating) {
-      _telemetry.testAbandoned();
-    }
-    _cancelTimers();
-    _resetSession();
-    _phase = QuizPhase.timeout;
-    _acceptingInput = true;
-    notifyListeners();
-
-    if (timeoutDisplayDuration == Duration.zero) {
-      restart();
+    if (_timeoutTransitionLocked) {
       return;
     }
-    _timeoutDisplayTimer = Timer(timeoutDisplayDuration, restart);
+    _idleTimer?.cancel();
+    _idleTimer = null;
+    _advanceTimer?.cancel();
+    _advanceTimer = null;
+    _calculatingTimer?.cancel();
+    _calculatingTimer = null;
+    _phaseBeforeTimeout = _phase;
+    _phase = QuizPhase.timeout;
+    _acceptingInput = true;
+    _timeoutTransitionLocked = false;
+    _startContinuePrompt();
+  }
+
+  void _startContinuePrompt() {
+    _continueTimer?.cancel();
+    _continueTimer = null;
+    if (timeoutDisplayDuration == Duration.zero) {
+      _goHomeFromTimeout();
+      return;
+    }
+
+    final wholeSeconds = timeoutDisplayDuration.inSeconds;
+    if (wholeSeconds <= 0) {
+      _continueRemainingSeconds = 1;
+      notifyListeners();
+      _continueTimer = Timer(timeoutDisplayDuration, _onContinueExpired);
+      return;
+    }
+
+    _continueRemainingSeconds = wholeSeconds;
+    notifyListeners();
+    _continueTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_timeoutTransitionLocked || _phase != QuizPhase.timeout) {
+        timer.cancel();
+        return;
+      }
+      final next = _continueRemainingSeconds - 1;
+      _continueRemainingSeconds = next < 0 ? 0 : next;
+      notifyListeners();
+      if (_continueRemainingSeconds <= 0) {
+        timer.cancel();
+        _onContinueExpired();
+      }
+    });
+  }
+
+  void _onContinueExpired() {
+    _goHomeFromTimeout();
+  }
+
+  bool _beginTimeoutTransition() {
+    if (_phase != QuizPhase.timeout) {
+      return false;
+    }
+    if (_timeoutTransitionLocked) {
+      return false;
+    }
+    _timeoutTransitionLocked = true;
+    _continueTimer?.cancel();
+    _continueTimer = null;
+    return true;
+  }
+
+  void _goHomeFromTimeout() {
+    if (!_beginTimeoutTransition()) {
+      return;
+    }
+    final origin = _phaseBeforeTimeout ?? QuizPhase.timeout;
+    if (origin == QuizPhase.question || origin == QuizPhase.calculating) {
+      _telemetry.testAbandoned();
+    }
+    _phaseBeforeTimeout = null;
+    _continueRemainingSeconds = 0;
+    _resetSession();
+    _phase = QuizPhase.start;
+    _timeoutTransitionLocked = false;
+    notifyListeners();
+  }
+
+  void _resumeAfterContinue(QuizPhase resume) {
+    switch (resume) {
+      case QuizPhase.question:
+        _phase = QuizPhase.question;
+        if (_currentIndex >= 0 &&
+            _currentIndex < _answers.length &&
+            _answers[_currentIndex] != null) {
+          _advanceAfterSelection();
+          return;
+        }
+        _acceptingInput = true;
+        _highlightedOptionIndex = null;
+        _armIdleTimer();
+        notifyListeners();
+      case QuizPhase.calculating:
+        _enterCalculating();
+      case QuizPhase.result:
+        _phase = QuizPhase.result;
+        _acceptingInput = true;
+        _armIdleTimer();
+        notifyListeners();
+      case QuizPhase.start:
+      case QuizPhase.timeout:
+        _resetSession();
+        _phase = QuizPhase.start;
+        notifyListeners();
+    }
   }
 
   void _armIdleTimer() {
@@ -266,6 +393,9 @@ class QuizController extends ChangeNotifier {
     _result = null;
     _highlightedOptionIndex = null;
     _acceptingInput = true;
+    _phaseBeforeTimeout = null;
+    _continueRemainingSeconds = 0;
+    _timeoutTransitionLocked = false;
   }
 
   void _cancelTimers() {
@@ -275,8 +405,8 @@ class QuizController extends ChangeNotifier {
     _calculatingTimer = null;
     _idleTimer?.cancel();
     _idleTimer = null;
-    _timeoutDisplayTimer?.cancel();
-    _timeoutDisplayTimer = null;
+    _continueTimer?.cancel();
+    _continueTimer = null;
   }
 
   @override
