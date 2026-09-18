@@ -48,7 +48,9 @@ Do **not** pass `-SiteName "<mevcut site adi>"`. The script resolves the site
 from the `testapp.limak.com.tr` binding or from EnduransStaff/LTStaff.
 
 This host often cannot connect to `https://testapp.limak.com.tr` (curl 28).
-Use `.\tool\health_check.ps1 -LocalOnly`.
+Use `.\tool\health_check.ps1 -LocalOnly` after `git pull` and deploy, not before.
+
+HTTP 500: `.\tool\iis_diagnose.ps1`. `publish\web.config` uses `<clear />` so site-level EnduransStaff/LTStaff rewrite rules are not inherited.
 
 If `/teknofest` was previously registered under `inetpub`, the same command
 updates the application physical path to `publish\` on the Desktop checkout.

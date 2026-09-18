@@ -212,6 +212,16 @@ Yerel kontrol:
 .\tool\health_check.ps1 -LocalOnly
 ```
 
+Komutları PowerShell `>>` ile tek satırda yapıştırmayın; `health_check` `git pull` ve `deploy`’dan **sonra** çalışır.
+
+HTTP 500 olursa IIS hata başlığı artık health çıktısında görünür. Ayrıntı:
+
+```powershell
+.\tool\iis_diagnose.ps1
+```
+
+Yaygın neden: site-level rewrite kurallarının `/teknofest` uygulamasına miras kalması (500.19, duplicate rule name). `publish\web.config` `<clear />` ile bunu keser. Site `web.config`’ine Teknofest kuralı yapıştırmayın.
+
 Dışarıdan (bu PC / internet):
 
 ```powershell
@@ -256,6 +266,7 @@ C:\Users\yturak\Desktop\teknofest-Kiosk\
 | APK `text/html` | Aynı; MIME `application/vnd.android.package-archive` |
 | 404 tüm `/teknofest` | IIS application yok veya nginx `/teknofest` geçirmiyor |
 | curl 28 / timeout | IIS kutusundan public hostname açılmaz; `health_check.ps1 -LocalOnly` |
+| PWA HTTP 500 | `iis_diagnose.ps1`; URL Rewrite yoksa veya site rewrite mirası (500.19) |
 | Parent node has no children | `-SiteName "<mevcut site adi>"` literal; `iis_inspect.ps1` kullanın |
 | 401.3 / boş site | Desktop ACL; `iis_register_application.ps1` app pool’a RX verir |
 | APK 404 | `apk\teknofest-yatay-latest.apk` kopyalanmadı; PWA zip APK taşımaz |

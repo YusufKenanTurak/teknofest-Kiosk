@@ -30,6 +30,40 @@ function Get-Header([string]$Headers, [string]$Name) {
     return ""
 }
 
+function Get-IisErrorSnippet([string]$Html) {
+    if ([string]::IsNullOrWhiteSpace($Html)) {
+        return ""
+    }
+    $bits = @()
+    if ($Html -match '<title>([^<]+)</title>') {
+        $bits += $Matches[1].Trim()
+    }
+    if ($Html -match 'HTTP Error (\d+\.\d+)') {
+        $bits += "HTTP Error $($Matches[1])"
+    }
+    if ($Html -match 'Config Error</(?:dt|h3)>\s*<dd>([^<]+)') {
+        $bits += $Matches[1].Trim()
+    }
+    elseif ($Html -match 'Config Error[^<]*</[^>]+>\s*<[^>]+>([^<]+)') {
+        $bits += $Matches[1].Trim()
+    }
+    if ($Html -match '(HRESULT|0x8[0-9a-fA-F]+)') {
+        $bits += $Matches[0]
+    }
+    if ($Html -match 'duplicate collection entry[^<]*') {
+        $bits += $Matches[0]
+    }
+    if ($bits.Count -eq 0) {
+        $plain = [regex]::Replace($Html, '<[^>]+>', ' ')
+        $plain = ($plain -replace '\s+', ' ').Trim()
+        if ($plain.Length -gt 400) {
+            $plain = $plain.Substring(0, 400)
+        }
+        return $plain
+    }
+    return ($bits -join ' | ')
+}
+
 function Invoke-CurlHead {
     param(
         [Parameter(Mandatory = $true)][string]$Url,
@@ -37,8 +71,11 @@ function Invoke-CurlHead {
         [bool]$SkipCertCheck
     )
 
+    $headerFile = Join-Path $env:TEMP ("teknofest-h-" + [guid]::NewGuid().ToString("N") + ".txt")
+    $bodyFile = Join-Path $env:TEMP ("teknofest-b-" + [guid]::NewGuid().ToString("N") + ".bin")
     $curlArgs = @(
-        "-sS", "-I", "--max-redirs", "0",
+        "-sS", "-D", $headerFile, "-o", $bodyFile,
+        "--max-redirs", "0",
         "--connect-timeout", "5", "--max-time", "20"
     )
     if ($SkipCertCheck) {
@@ -48,13 +85,36 @@ function Invoke-CurlHead {
         $curlArgs += @("-H", "Host: $RequestHost")
     }
     $curlArgs += $Url
-    $output = & curl.exe @curlArgs 2>&1
-    $text = ($output | ForEach-Object { "$_" }) -join "`n"
+    & curl.exe @curlArgs 2>&1 | Out-Null
+    $exit = $LASTEXITCODE
+    $text = ""
+    $body = ""
+    if (Test-Path $headerFile) {
+        $text = [System.IO.File]::ReadAllText($headerFile)
+        Remove-Item $headerFile -Force -ErrorAction SilentlyContinue
+    }
+    if (Test-Path $bodyFile) {
+        try {
+            $body = [System.IO.File]::ReadAllText($bodyFile)
+        }
+        catch {
+            $body = ""
+        }
+        Remove-Item $bodyFile -Force -ErrorAction SilentlyContinue
+    }
+    $status = Get-Status $text
+    if ($status -ge 500 -and -not [string]::IsNullOrWhiteSpace($body)) {
+        $snip = Get-IisErrorSnippet $body
+        if ($snip) {
+            $text = "$text`nIIS: $snip"
+        }
+    }
     return [pscustomobject]@{
         Url      = $Url
-        ExitCode = $LASTEXITCODE
+        ExitCode = $exit
         Text     = $text
-        Status   = Get-Status $text
+        Body     = $body
+        Status   = $status
     }
 }
 
