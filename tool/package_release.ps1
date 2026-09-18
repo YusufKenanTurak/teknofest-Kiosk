@@ -1,8 +1,7 @@
-# Bu PC'de uretilmis publish/ klasorunu sunucuya tasınacak zip haline getirir.
-# Flutter cagirmaz; once build_web + publish_web (ve istenirse APK) calismis olmali.
+# PWA-only zip. APK bu pakete girmez; ayri artifact (apk\ / package_apk.ps1).
 #
 #   .\tool\package_release.ps1
-#   -> dist\teknofest-iis-latest.zip
+#   -> dist\teknofest-pwa-latest.zip
 
 param(
     [string]$PublishDir,
@@ -10,10 +9,11 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "server_paths.ps1")
+$layout = Get-TeknofestDeployLayout
 
 if ([string]::IsNullOrWhiteSpace($PublishDir)) {
-    $PublishDir = Join-Path $root "publish"
+    $PublishDir = $layout.PublishDir
 }
 $PublishDir = [System.IO.Path]::GetFullPath($PublishDir)
 
@@ -23,29 +23,32 @@ foreach ($required in @("index.html", "web.config", "app\version.json")) {
     }
 }
 
-$dist = Join-Path $root "dist"
-if (-not (Test-Path $dist)) {
-    New-Item -ItemType Directory -Path $dist | Out-Null
-}
+New-Item -ItemType Directory -Path $layout.DistDir -Force | Out-Null
 
 $stamp = Get-Date -Format "yyyyMMdd-HHmm"
 if ([string]::IsNullOrWhiteSpace($OutputZip)) {
-    $OutputZip = Join-Path $dist "teknofest-iis-$stamp.zip"
+    $OutputZip = Join-Path $layout.DistDir "teknofest-pwa-$stamp.zip"
 }
 $OutputZip = [System.IO.Path]::GetFullPath($OutputZip)
-$latestZip = Join-Path $dist "teknofest-iis-latest.zip"
+$latestZip = $layout.IncomingZip
+$legacyZip = Join-Path $layout.DistDir "teknofest-iis-latest.zip"
 
 if (Test-Path $OutputZip) {
     Remove-Item $OutputZip -Force
 }
 
-$staging = Join-Path $dist ("_stage-" + [guid]::NewGuid().ToString("N"))
+$staging = Join-Path $layout.DistDir ("_stage-pwa-" + [guid]::NewGuid().ToString("N"))
+$excludeDownloads = Join-Path $PublishDir "app\downloads"
 New-Item -ItemType Directory -Path $staging | Out-Null
 try {
-    robocopy $PublishDir $staging /E /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
+    robocopy $PublishDir $staging /E /XD $excludeDownloads /XF *.apk /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
     $code = $LASTEXITCODE
     if ($code -ge 8) {
-        throw "publish staging kopyasi basarisiz (robocopy exit $code)"
+        throw "PWA staging kopyasi basarisiz (robocopy exit $code)"
+    }
+    $leaked = Get-ChildItem $staging -Filter *.apk -Recurse -ErrorAction SilentlyContinue
+    if ($leaked) {
+        throw "PWA zip'ine APK sizmamali: $($leaked.FullName -join ', ')"
     }
     Compress-Archive -Path (Join-Path $staging "*") -DestinationPath $OutputZip -CompressionLevel Optimal
 }
@@ -54,14 +57,8 @@ finally {
 }
 
 Copy-Item $OutputZip $latestZip -Force
+Copy-Item $OutputZip $legacyZip -Force
 
-$apk = Join-Path $PublishDir "app\downloads\teknofest-yatay-latest.apk"
-if (Test-Path $apk) {
-    Write-Host "Paket APK iceriyor." -ForegroundColor Green
-}
-else {
-    Write-Host "Paket APK icermiyor; sunucudaki mevcut APK korunabilir." -ForegroundColor Yellow
-}
-
-Write-Host "Release paketi: $OutputZip" -ForegroundColor Green
-Write-Host "Latest kopya:   $latestZip" -ForegroundColor Green
+Write-Host "PWA paketi: $OutputZip" -ForegroundColor Green
+Write-Host "Latest:     $latestZip" -ForegroundColor Green
+Write-Host "APK bu zip'te yok; .\tool\package_apk.ps1 kullanin." -ForegroundColor Cyan

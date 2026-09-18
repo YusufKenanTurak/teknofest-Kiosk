@@ -14,6 +14,10 @@ Do not point IIS at the repo root (`lib\`, `tool\` must not be served). Do not
 use `C:\inetpub\wwwroot`. `deploy.ps1` requires `-SkipPwaBuild` and never
 compiles.
 
+PWA (`publish\`) and APK (`apk\teknofest-yatay-latest.apk`) are separate
+artifacts. The live download URL is still
+`/teknofest/app/downloads/teknofest-yatay-latest.apk` after `copy_apk.ps1`.
+
 Desktop is a user profile path. `iis_register_application.ps1` grants
 `IIS_IUSRS`, `IUSR`, and the site app pool RX on `publish\`.
 

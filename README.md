@@ -158,27 +158,29 @@ cd "<repo>"
 flutter test
 .\tool\build_web.ps1
 .\tool\publish_web.ps1
+.\tool\package_release.ps1
 .\tool\build_apk.ps1
 .\tool\publish_apk.ps1 -Notes "Stand release"
-.\tool\package_release.ps1
 ```
 
-Çıktı: `dist\teknofest-iis-latest.zip`
+Çıktı (ayrı paketler):
+
+- PWA: `dist\teknofest-pwa-latest.zip` (APK yok)
+- APK: `apk\teknofest-yatay-latest.apk` ve `dist\teknofest-yatay-latest.apk`
 
 ### 2) Sunucuya koy
 
-Tüm repo + `publish\` zaten şurada olmalı:
+Repo + `publish\` + **`apk\teknofest-yatay-latest.apk`** şurada olmalı:
 
 `C:\Users\yturak\Desktop\teknofest-Kiosk`
 
-Yeni zip varsa: `C:\Users\yturak\Desktop\teknofest-Kiosk\dist\teknofest-iis-latest.zip`
-
-Paylaşım ile yalnızca PWA:
+APK git’te yoktur; `apk\` klasörünü bu PC’den kopyalayın. PWA zip APK içermez.
 
 ```powershell
 .\tool\copy_publish.ps1 `
   -PublishDir ".\publish" `
   -IisPhysicalPath "\\SUNUCU\C$\Users\yturak\Desktop\teknofest-Kiosk\publish"
+.\tool\copy_apk.ps1 -SourceRoot "\\SUNUCU\C$\Users\yturak\Desktop\teknofest-Kiosk"
 ```
 
 ### 3) Sunucu — Flutter yok
@@ -191,18 +193,20 @@ Get-WebBinding
 
 cd C:\Users\yturak\Desktop\teknofest-Kiosk
 
-# Dosyalar zaten bu klasordeyse:
+# PWA + APK (APK yoksa hata verir)
 .\tool\deploy.ps1 -SkipPwaBuild
 
-# Yeni zip geldiyse:
-.\tool\deploy.ps1 -SkipPwaBuild -FromZip ".\dist\teknofest-iis-latest.zip"
+# Yalnız PWA:
+.\tool\deploy.ps1 -SkipPwaBuild -SkipApk
 
-# Application (bir kez; SiteName = Get-Website). Physical path varsayilan publish\
+# Yeni PWA zip:
+.\tool\deploy.ps1 -SkipPwaBuild -FromZip ".\dist\teknofest-pwa-latest.zip"
+
 .\tool\iis_register_application.ps1 -SiteName "<mevcut site adi>"
 ```
 
-`deploy.ps1` `-SkipPwaBuild` olmadan çalışmaz. IIS application `publish\`
-dışına bakıyorsa `iis_register_application.ps1` physical path’i buraya çeker.
+`deploy.ps1` `-SkipPwaBuild` olmadan çalışmaz. APK `apk\` kaynağından
+`publish\app\downloads\` altına kopyalanır; PWA güncellemesi bu dosyayı silmez.
 
 ### 4) Health check (bu PC veya sunucu)
 
@@ -221,24 +225,18 @@ iletmelidir. Bu repo nginx conf’una dokunmaz.
 ## Directory Structure
 
 ```
-C:\Users\yturak\Desktop\teknofest-Kiosk\   sunucu checkout (inetpub yok)
-  publish\                                IIS /teknofest physical path
-    web.config
-    index.html, flutter.js, ...
-    assets/, canvaskit/, icons/
-    app\
-      version.json
-      downloads\teknofest-yatay-latest.apk
-  drop\                                   zip acma (opsiyonel)
-  dist\                                   gelen zip (opsiyonel)
+C:\Users\yturak\Desktop\teknofest-Kiosk\
+  publish\                                PWA (IIS /teknofest)
+    web.config, index.html, assets\
+    app\version.json
+    app\downloads\                        kopya hedefi; kaynak degil
+  apk\teknofest-yatay-latest.apk          APK artifact (PWA zip'te yok)
+  dist\teknofest-pwa-latest.zip
+  dist\teknofest-yatay-latest.apk
   tool\
-    server_paths.ps1
-    build_web.ps1 / publish_web.ps1       bu PC
-    build_apk.ps1 / publish_apk.ps1       bu PC
-    package_release.ps1
+    package_release.ps1                   PWA zip
+    package_apk.ps1 / copy_apk.ps1        APK
     copy_publish.ps1 / deploy.ps1
-    health_check.ps1
-    iis_register_application.ps1
 ```
 
 ## Update Flow
@@ -258,6 +256,7 @@ C:\Users\yturak\Desktop\teknofest-Kiosk\   sunucu checkout (inetpub yok)
 | APK `text/html` | Aynı; MIME `application/vnd.android.package-archive` |
 | 404 tüm `/teknofest` | IIS application yok veya nginx `/teknofest` geçirmiyor |
 | 401.3 / boş site | Desktop ACL; `iis_register_application.ps1` app pool’a RX verir |
+| APK 404 | `apk\teknofest-yatay-latest.apk` kopyalanmadı; PWA zip APK taşımaz |
 | Eski APK iniyor | APK `no-store`; tarayıcı değil kiosk DownloadManager kullanır |
 | SW başka uygulamayı bozuyor | SW `/teknofest/flutter_service_worker.js` — `Service-Worker-Allowed: /` header’ı eklemeyin |
 | Diğer PWA’lar kırıldı | Site-level rewrite’e Teknofest kuralı yapıştırılmamalı |
@@ -274,7 +273,8 @@ curl.exe -I https://testapp.limak.com.tr/teknofest/app/downloads/teknofest-yatay
 
 ```powershell
 cd C:\Users\yturak\Desktop\teknofest-Kiosk
-.\tool\deploy.ps1 -SkipPwaBuild -FromZip ".\dist\teknofest-iis-<onceki>.zip"
+.\tool\deploy.ps1 -SkipPwaBuild -FromZip ".\dist\teknofest-pwa-<onceki>.zip"
+.\tool\copy_apk.ps1
 ```
 
 APK yeni pakette yoksa mevcut `teknofest-yatay-latest.apk` silinmez.

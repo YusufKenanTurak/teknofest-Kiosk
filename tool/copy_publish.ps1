@@ -33,12 +33,9 @@ $iisPath = Assert-TeknofestIisPhysicalPath $IisPhysicalPath
 
 $samePath = [string]::Equals($publish.TrimEnd("\"), $iisPath.TrimEnd("\"), [System.StringComparison]::OrdinalIgnoreCase)
 if ($samePath) {
-    Write-Host "IIS physical path zaten publish (in-place): $iisPath" -ForegroundColor Cyan
+    Write-Host "PWA in-place (APK bu adimda kopyalanmaz): $iisPath" -ForegroundColor Cyan
     Grant-TeknofestIisReadAccess -Path $iisPath
-    if (-not (Test-Path (Join-Path $iisPath "app\downloads\teknofest-yatay-latest.apk"))) {
-        Write-Host "APK bu klasorde yok; indirme URL'si 404 olabilir." -ForegroundColor Yellow
-    }
-    Write-Host "Kopyalama atlandi." -ForegroundColor Green
+    Write-Host "PWA kopyalama atlandi." -ForegroundColor Green
     return
 }
 
@@ -57,7 +54,7 @@ if ($hadLiveApk -and -not (Test-Path $newApk)) {
 $srcDownloads = Join-Path $publish "app\downloads"
 $dstDownloads = Join-Path $iisPath "app\downloads"
 
-Write-Host "IIS klasore kopyalaniyor: $publish -> $iisPath" -ForegroundColor Cyan
+Write-Host "PWA kopyalaniyor (downloads/ dokunulmaz): $publish -> $iisPath" -ForegroundColor Cyan
 robocopy $publish $iisPath /MIR /XD $srcDownloads $dstDownloads /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
 $code = $LASTEXITCODE
 if ($code -ge 8) {
@@ -65,17 +62,9 @@ if ($code -ge 8) {
 }
 
 New-Item -ItemType Directory -Path $dstDownloads -Force | Out-Null
-if (Test-Path $newApk) {
-    Copy-Item $newApk (Join-Path $dstDownloads "teknofest-yatay-latest.apk") -Force
-    Write-Host "APK guncellendi." -ForegroundColor Green
-}
-elseif ($hadLiveApk -and (Test-Path $preservedApk)) {
-    Copy-Item $preservedApk (Join-Path $dstDownloads "teknofest-yatay-latest.apk") -Force
-    Write-Host "Yeni APK yok; onceki production APK korundu." -ForegroundColor Yellow
-}
-else {
-    Write-Host "APK bu pakette yok; indirme URL'si 404 olabilir." -ForegroundColor Yellow
+if ($hadLiveApk -and (Test-Path $preservedApk) -and -not (Test-Path $liveApk)) {
+    Copy-Item $preservedApk $liveApk -Force
 }
 
 Grant-TeknofestIisReadAccess -Path $iisPath
-Write-Host "Kopyalama tamam." -ForegroundColor Green
+Write-Host "PWA kopyalama tamam." -ForegroundColor Green

@@ -1,10 +1,12 @@
 # IIS host dizinleri. inetpub kullanilmaz.
 # Canonical checkout: C:\Users\yturak\Desktop\teknofest-Kiosk
 #
-# IIS /teknofest physical path = <root>\publish
-# Kaynak kod (lib/, tool/) servis edilmez.
+# PWA:  <root>\publish                  IIS /teknofest
+# APK:  <root>\apk\teknofest-yatay-latest.apk
+#       kopyalaninca: <root>\publish\app\downloads\  (HTTPS URL; PWA agacinin parcasi degil)
 
 $script:TeknofestServerRootCanonical = "C:\Users\yturak\Desktop\teknofest-Kiosk"
+$script:TeknofestApkFileName = "teknofest-yatay-latest.apk"
 
 function Get-TeknofestDeployLayout {
     param([string]$SourceRoot)
@@ -20,14 +22,21 @@ function Get-TeknofestDeployLayout {
     }
 
     $root = [System.IO.Path]::GetFullPath($SourceRoot)
+    $publish = Join-Path $root "publish"
+    $apkDir = Join-Path $root "apk"
     [pscustomobject]@{
         ServerRoot      = $root
         CanonicalRoot   = $script:TeknofestServerRootCanonical
-        PublishDir      = Join-Path $root "publish"
+        PublishDir      = $publish
+        ApkDir          = $apkDir
+        ApkFileName     = $script:TeknofestApkFileName
+        ApkPath         = Join-Path $apkDir $script:TeknofestApkFileName
+        ApkIisPath      = Join-Path $publish "app\downloads\$($script:TeknofestApkFileName)"
         DropDir         = Join-Path $root "drop"
         DistDir         = Join-Path $root "dist"
-        IncomingZip     = Join-Path $root "dist\teknofest-iis-latest.zip"
-        IisPhysicalPath = Join-Path $root "publish"
+        IncomingZip     = Join-Path $root "dist\teknofest-pwa-latest.zip"
+        IncomingApk     = Join-Path $root "dist\$($script:TeknofestApkFileName)"
+        IisPhysicalPath = $publish
         ApplicationName = "teknofest"
     }
 }
@@ -59,6 +68,34 @@ function Assert-TeknofestIisPhysicalPath {
     }
     if ($normalized.StartsWith("C:\inetpub", [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "IIS physical path inetpub olamaz: $full"
+    }
+    return $full
+}
+
+function Assert-TeknofestApkFile {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $full = [System.IO.Path]::GetFullPath($Path)
+    if (-not (Test-Path $full)) {
+        throw "APK yok: $full. Bu PC'de .\tool\build_apk.ps1 ; .\tool\publish_apk.ps1 sonra sunucuya apk\ klasorunu kopyalayin."
+    }
+    if ([System.IO.Path]::GetExtension($full) -ne ".apk") {
+        throw "APK uzantisi .apk olmali: $full"
+    }
+    $item = Get-Item $full
+    if ($item.Length -lt 1MB) {
+        throw "APK cok kucuk ($($item.Length) byte); gercek release degil: $full"
+    }
+    $fs = [System.IO.File]::OpenRead($full)
+    try {
+        $b0 = $fs.ReadByte()
+        $b1 = $fs.ReadByte()
+    }
+    finally {
+        $fs.Dispose()
+    }
+    if ($b0 -ne 0x50 -or $b1 -ne 0x4B) {
+        throw "APK zip imzasi yok (PK): $full"
     }
     return $full
 }

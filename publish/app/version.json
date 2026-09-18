@@ -2,9 +2,9 @@
     "version":  "1.0.0",
     "versionCode":  1,
     "build":  1,
-    "released_at":  "2026-09-18T09:18:42Z",
+    "released_at":  "2026-09-18T11:05:45Z",
     "force_logout":  false,
-    "notes":  "Initial PWA and IIS publish",
+    "notes":  "Stand release",
     "android":  {
                     "version":  "1.0.0",
                     "versionCode":  1,

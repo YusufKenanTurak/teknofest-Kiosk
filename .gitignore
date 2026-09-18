@@ -36,6 +36,7 @@ migrate_working_dir/
 /qa-screens/
 /teknofest-kiosk-yatay-release.apk
 /publish/app/downloads/*.apk
+/apk/*.apk
 
 # Symbolication related
 app.*.symbols

@@ -1,7 +1,7 @@
-# Derlenmis APK'yi publish/app/downloads/teknofest-yatay-latest.apk olarak kopyalar
-# ve version.json yazar. Referans: VardiyaTakip tool/publish_apk.ps1
+# Derlenmis APK'yi PWA'dan ayri apk\ artifact'ine koyar ve version.json gunceller.
 #
 #   .\tool\publish_apk.ps1
+#   .\tool\publish_apk.ps1 -Notes "Stand release"
 
 param(
     [string]$ApkPath,
@@ -11,28 +11,31 @@ param(
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "app_version.ps1")
+. (Join-Path $PSScriptRoot "server_paths.ps1")
+
+$layout = Get-TeknofestDeployLayout -SourceRoot $root
 
 if ([string]::IsNullOrWhiteSpace($ApkPath)) {
     $ApkPath = Join-Path $root "build\app\outputs\flutter-apk\app-release.apk"
 }
 if (-not (Test-Path $ApkPath)) {
-    throw "APK bulunamadi: $ApkPath. Once flutter build apk --release calistirin."
+    throw "APK bulunamadi: $ApkPath. Once .\tool\build_apk.ps1 calistirin."
 }
 
-$destDir = Join-Path $root "publish\app\downloads"
-if (-not (Test-Path $destDir)) {
-    New-Item -ItemType Directory -Path $destDir | Out-Null
-}
+New-Item -ItemType Directory -Path $layout.ApkDir -Force | Out-Null
+Copy-Item $ApkPath $layout.ApkPath -Force
+Write-Host "APK artifact: $($layout.ApkPath)" -ForegroundColor Green
 
-$dest = Join-Path $destDir "teknofest-yatay-latest.apk"
-Copy-Item $ApkPath $dest -Force
-Write-Host "APK kopyalandi: $dest" -ForegroundColor Green
+New-Item -ItemType Directory -Path $layout.DistDir -Force | Out-Null
+Copy-Item $layout.ApkPath $layout.IncomingApk -Force
 
 $writeArgs = @{
-    OutputDir = (Join-Path $root "publish\app")
-    ApkUrl    = "downloads/teknofest-yatay-latest.apk"
+    OutputDir = (Join-Path $layout.PublishDir "app")
+    ApkUrl    = "downloads/$($layout.ApkFileName)"
 }
 if (-not [string]::IsNullOrWhiteSpace($Notes)) {
     $writeArgs.Notes = $Notes
 }
 & (Join-Path $PSScriptRoot "write_version_manifest.ps1") @writeArgs
+
+& (Join-Path $PSScriptRoot "copy_apk.ps1") -FromApk $layout.ApkPath -SourceRoot $root
