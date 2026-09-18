@@ -141,36 +141,87 @@ Göreli `apk_url`, `{base}/app/` üzerinden çözülür:
 
 ## IIS Deployment
 
-Mevcut site rewrite’leri (**EnduransStaff, LTStaff, ANKStaff, testcontainer**)
-değiştirilmez. Teknofest izole IIS Application’dır.
+**Sunucuda Flutter yoktur.** Derleme bu (geliştirme) PC’de alınır; IIS’e yalnızca
+`publish/` artifact’i kopyalanır. Mevcut site rewrite’leri (**EnduransStaff,
+LTStaff, ANKStaff, testcontainer**) değiştirilmez.
 
 Ayrıntı: [deploy/iis/README.md](deploy/iis/README.md)
 
+### 1) Bu PC — build
+
 ```powershell
-# 1) Kaynak
+cd "<repo>"
+flutter test
+.\tool\build_web.ps1
+.\tool\publish_web.ps1
+.\tool\build_apk.ps1
+.\tool\publish_apk.ps1 -Notes "Stand release"
+.\tool\package_release.ps1
+```
+
+Çıktı: `dist\teknofest-iis-latest.zip` (`publish/` içeriği; APK varsa içinde).
+
+### 2) Artifact’i sunucuya kopyala
+
+Paylaşım varsa (bu PC’den, Flutter’sız kopya):
+
+```powershell
+.\tool\copy_publish.ps1 `
+  -PublishDir ".\publish" `
+  -IisPhysicalPath "\\SUNUCU\C$\inetpub\wwwroot\teknofest"
+```
+
+Yoksa zip’i RDP/USB ile `C:\inetpub\staging\` altına koyun.
+
+### 3) Sunucu — Flutter yok, sadece kopya + IIS
+
+İlk seferde script’ler için repo klonlanabilir; `flutter` kurulmaz, `build_web` çalışmaz.
+
+```powershell
+Import-Module WebAdministration
+Get-Website
+Get-WebApplication
+Get-WebBinding
+
+# Script'ler icin (bir kez; derleme yok)
 cd C:\inetpub\apps
 git clone https://github.com/YusufKenanTurak/teknofest-Kiosk.git teknofest-Kiosk
 cd teknofest-Kiosk
 git checkout main
 
-# 2) Build (sunucuda Flutter yoksa repo icindeki publish/ kullanilir)
-.\tool\build_web.ps1
-.\tool\publish_web.ps1
+# Zip'i ac (bu PC'den gelen paket)
+$drop = "C:\inetpub\staging\teknofest-drop"
+if (Test-Path $drop) { Remove-Item $drop -Recurse -Force }
+New-Item -ItemType Directory -Path $drop | Out-Null
+Expand-Archive -Path "C:\inetpub\staging\teknofest-iis-latest.zip" -DestinationPath $drop -Force
 
-# 3) IIS physical path (yalnizca publish icerigi)
-.\tool\deploy.ps1 -IisPhysicalPath "C:\inetpub\wwwroot\teknofest"
+# Derleme yok; kopyalanan artifact IIS'e yazilir
+.\tool\deploy.ps1 `
+  -SkipPwaBuild `
+  -PublishDir $drop `
+  -IisPhysicalPath "C:\inetpub\wwwroot\teknofest"
 
-# 4) Application (bir kez)
+# Application (bir kez). SiteName Get-Website ciktisindan.
 .\tool\iis_register_application.ps1 `
   -SiteName "<mevcut site adi>" `
   -PhysicalPath "C:\inetpub\wwwroot\teknofest"
 ```
 
-`web.config` `publish/` içindedir: APK MIME, JSON MIME, cache, SPA fallback.
-Site köküne kural eklemeye gerek yoktur.
+`deploy.ps1` `-SkipPwaBuild` olmadan çalışmaz (sunucuda derlemeyi reddeder).
 
-Public hostname şu an nginx 404 dönüyorsa, edge’in `/teknofest` isteğini IIS
-application’a iletmesi gerekir. Bu repo nginx conf’una dokunmaz.
+### 4) Health check (bu PC veya sunucu)
+
+```powershell
+curl.exe -I https://testapp.limak.com.tr/teknofest
+curl.exe -I https://testapp.limak.com.tr/teknofest/app/version.json
+curl.exe -I https://testapp.limak.com.tr/teknofest/app/downloads/teknofest-yatay-latest.apk
+.\tool\health_check.ps1
+```
+
+`web.config` `publish/` içindedir. Site köküne kural eklemeyin.
+
+Public hostname nginx 404 dönüyorsa edge `/teknofest` isteğini IIS application’a
+iletmelidir. Bu repo nginx conf’una dokunmaz.
 
 ## Directory Structure
 
@@ -184,10 +235,11 @@ publish/                          IIS physical path
     downloads/
       teknofest-yatay-latest.apk  gitignore; deploy korur
 tool/
-  build_web.ps1 / publish_web.ps1
-  build_apk.ps1 / publish_apk.ps1
-  write_version_manifest.ps1
-  deploy.ps1 / health_check.ps1
+  build_web.ps1 / publish_web.ps1     bu PC
+  build_apk.ps1 / publish_apk.ps1     bu PC
+  package_release.ps1                 zip artifact
+  copy_publish.ps1 / deploy.ps1       IIS kopya, Flutter yok
+  health_check.ps1
   iis_register_application.ps1
 ```
 
@@ -219,17 +271,14 @@ curl.exe -I https://testapp.limak.com.tr/teknofest/app/downloads/teknofest-yatay
 
 ## Rollback
 
-`deploy.ps1` her seferinde `publish/` içeriğini IIS path’e kopyalar.
-Önceki çalışan Git commit’e dönmek:
+Önceki zip’i tekrar açıp aynı `SkipPwaBuild` kopyasını çalıştırın:
 
 ```powershell
-cd C:\inetpub\apps\teknofest-Kiosk
-git fetch origin
-git checkout <onceki-commit>
-.\tool\deploy.ps1 -IisPhysicalPath "C:\inetpub\wwwroot\teknofest" -SkipBuild
+Expand-Archive -Path "C:\inetpub\staging\teknofest-iis-<onceki>.zip" -DestinationPath "C:\inetpub\staging\teknofest-drop" -Force
+.\tool\deploy.ps1 -SkipPwaBuild -PublishDir "C:\inetpub\staging\teknofest-drop" -IisPhysicalPath "C:\inetpub\wwwroot\teknofest"
 ```
 
-APK yeni dosya yoksa mevcut `teknofest-yatay-latest.apk` silinmez.
+APK yeni pakette yoksa mevcut `teknofest-yatay-latest.apk` silinmez.
 
 ## Cache
 

@@ -1,5 +1,6 @@
 # Mevcut testapp.limak.com.tr sitesine /teknofest application ekler.
 # Site-level rewrite kurallarina (EnduransStaff, LTStaff, ...) DOKUNMAZ.
+# Flutter gerektirmez; physical path onceden kopyalanmis publish/ olmalidir.
 #
 #   Import-Module WebAdministration
 #   .\tool\iis_register_application.ps1 -SiteName "testapp.limak.com.tr" -PhysicalPath "C:\inetpub\wwwroot\teknofest"
