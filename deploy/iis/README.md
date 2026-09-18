@@ -36,18 +36,19 @@ Those rules must stay untouched.
 
 Teknofest is isolated as an **IIS Application** named `teknofest` under the existing site. Its own `publish/web.config` is used. Match URLs in that file are relative to `/teknofest`, so they cannot capture `LTStaff` or `testcontainer`.
 
-## Register (once, on the IIS host)
+## Register (once, Administrator PowerShell on the IIS host)
 
 ```powershell
-Import-Module WebAdministration
-Get-Website
-Get-WebApplication
-Get-WebBinding
-
 cd C:\Users\yturak\Desktop\teknofest-Kiosk
-.\tool\deploy.ps1 -SkipPwaBuild
-.\tool\iis_register_application.ps1 -SiteName "<existing site name>"
+.\tool\iis_inspect.ps1
+.\tool\iis_register_application.ps1
 ```
+
+Do **not** pass `-SiteName "<mevcut site adi>"`. The script resolves the site
+from the `testapp.limak.com.tr` binding or from EnduransStaff/LTStaff.
+
+This host often cannot connect to `https://testapp.limak.com.tr` (curl 28).
+Use `.\tool\health_check.ps1 -LocalOnly`.
 
 If `/teknofest` was previously registered under `inetpub`, the same command
 updates the application physical path to `publish\` on the Desktop checkout.

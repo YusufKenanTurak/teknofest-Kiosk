@@ -1,19 +1,21 @@
-# Mevcut testapp.limak.com.tr sitesine /teknofest application ekler.
-# Site-level rewrite kurallarina (EnduransStaff, LTStaff, ...) DOKUNMAZ.
-# Flutter yok. Physical path: C:\Users\yturak\Desktop\teknofest-Kiosk\publish
+# Mevcut IIS sitesine /teknofest application ekler.
+# Site-level rewrite (EnduransStaff, LTStaff, ...) DOKUNULMAZ.
 #
-#   Import-Module WebAdministration
-#   .\tool\iis_register_application.ps1 -SiteName "testapp.limak.com.tr"
+#   .\tool\iis_register_application.ps1
+#   .\tool\iis_register_application.ps1 -SiteName "Default Web Site"
 
 param(
-    [Parameter(Mandatory = $true)]
     [string]$SiteName,
     [string]$PhysicalPath,
-    [string]$ApplicationName = "teknofest"
+    [string]$ApplicationName = "teknofest",
+    [switch]$SkipHealthCheck
 )
 
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "server_paths.ps1")
+. (Join-Path $PSScriptRoot "iis_site.ps1")
+
+Assert-TeknofestAdministrator
 Import-Module WebAdministration
 
 $layout = Get-TeknofestDeployLayout
@@ -29,25 +31,39 @@ if (-not (Test-Path (Join-Path $full "index.html"))) {
     throw "PhysicalPath icinde index.html yok (Flutter kaynak agaci servis edilmez): $full"
 }
 
-$site = Get-Website -Name $SiteName -ErrorAction Stop
-Write-Host "Site: $($site.Name)  state=$($site.State)  pool=$($site.applicationPool)" -ForegroundColor Cyan
+Write-TeknofestIisInventory
+$site = Resolve-TeknofestIisSite -SiteName $SiteName
+$resolvedName = [string]$site.Name
+$pool = [string]$site.applicationPool
+if ([string]::IsNullOrWhiteSpace($resolvedName)) {
+    throw "IIS site adi bos. Placeholder (-SiteName '<mevcut site adi>') kullanmayin."
+}
+if ([string]::IsNullOrWhiteSpace($pool)) {
+    throw "Site '$resolvedName' application pool'u bos."
+}
 
-$appPath = "/$ApplicationName"
-$existing = Get-WebApplication -Site $SiteName -Name $ApplicationName -ErrorAction SilentlyContinue
+Write-Host "Kayit: site='$resolvedName'  state=$($site.State)  pool=$pool" -ForegroundColor Cyan
+Write-Host "  physical path: $full" -ForegroundColor Cyan
+
+$existing = Get-WebApplication -Site $resolvedName -Name $ApplicationName -ErrorAction SilentlyContinue
 if ($null -eq $existing) {
-    New-WebApplication -Site $SiteName -Name $ApplicationName -PhysicalPath $full -ApplicationPool $site.applicationPool
-    Write-Host "Application olusturuldu: $appPath -> $full" -ForegroundColor Green
+    New-WebApplication -Site $resolvedName -Name $ApplicationName -PhysicalPath $full -ApplicationPool $pool
+    Write-Host "Application olusturuldu: /$ApplicationName -> $full" -ForegroundColor Green
 }
 else {
     $current = [System.IO.Path]::GetFullPath([string]$existing.PhysicalPath)
     if (-not [string]::Equals($current.TrimEnd("\"), $full.TrimEnd("\"), [System.StringComparison]::OrdinalIgnoreCase)) {
-        Set-ItemProperty "IIS:\Sites\$SiteName\$ApplicationName" -Name physicalPath -Value $full
+        Set-ItemProperty "IIS:\Sites\$resolvedName\$ApplicationName" -Name physicalPath -Value $full
         Write-Host "Physical path guncellendi: $current -> $full" -ForegroundColor Yellow
     }
     else {
-        Write-Host "Application zaten kayitli: $appPath -> $full" -ForegroundColor Yellow
+        Write-Host "Application zaten kayitli: /$ApplicationName -> $full" -ForegroundColor Yellow
     }
 }
 
-Grant-TeknofestIisReadAccess -Path $full -AppPoolName $site.applicationPool
+Grant-TeknofestIisReadAccess -Path $full -AppPoolName $pool
 Write-Host "Site-level rewrite kurallarina dokunulmadi." -ForegroundColor Green
+
+if (-not $SkipHealthCheck) {
+    & (Join-Path $PSScriptRoot "health_check.ps1") -LocalOnly -SiteName $resolvedName
+}

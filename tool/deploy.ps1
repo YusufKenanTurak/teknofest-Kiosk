@@ -2,8 +2,7 @@
 #
 #   cd C:\Users\yturak\Desktop\teknofest-Kiosk
 #   .\tool\deploy.ps1 -SkipPwaBuild
-#   .\tool\deploy.ps1 -SkipPwaBuild -FromZip ".\dist\teknofest-pwa-latest.zip"
-#   .\tool\deploy.ps1 -SkipPwaBuild -FromApk ".\apk\teknofest-yatay-latest.apk"
+#   .\tool\deploy.ps1 -SkipPwaBuild -RegisterIis
 
 param(
     [string]$IisPhysicalPath,
@@ -11,12 +10,13 @@ param(
     [string]$SourceRoot,
     [string]$FromZip,
     [string]$FromApk,
-    [string]$HealthBaseUrl = "https://testapp.limak.com.tr/teknofest",
+    [string]$SiteName,
     [switch]$SkipPwaBuild,
     [switch]$SkipBuild,
     [switch]$SkipApk,
     [switch]$GitPull,
-    [switch]$SkipHealthCheck
+    [switch]$RegisterIis,
+    [switch]$HealthCheck
 )
 
 $ErrorActionPreference = "Stop"
@@ -108,8 +108,15 @@ else {
     & (Join-Path $PSScriptRoot "copy_apk.ps1") @apkArgs
 }
 
-if (-not $SkipHealthCheck) {
-    & (Join-Path $PSScriptRoot "health_check.ps1") -BaseUrl $HealthBaseUrl
+if ($RegisterIis) {
+    $regArgs = @{}
+    if (-not [string]::IsNullOrWhiteSpace($SiteName)) {
+        $regArgs.SiteName = $SiteName
+    }
+    & (Join-Path $PSScriptRoot "iis_register_application.ps1") @regArgs
+}
+elseif ($HealthCheck) {
+    & (Join-Path $PSScriptRoot "health_check.ps1") -LocalOnly
 }
 
 Write-Host "Deploy tamam." -ForegroundColor Green

@@ -183,44 +183,44 @@ APK git’te yoktur; `apk\` klasörünü bu PC’den kopyalayın. PWA zip APK i�
 .\tool\copy_apk.ps1 -SourceRoot "\\SUNUCU\C$\Users\yturak\Desktop\teknofest-Kiosk"
 ```
 
-### 3) Sunucu — Flutter yok
+### 3) Sunucu — Flutter yok (Administrator PowerShell)
 
 ```powershell
-Import-Module WebAdministration
-Get-Website
-Get-WebApplication
-Get-WebBinding
-
 cd C:\Users\yturak\Desktop\teknofest-Kiosk
+git pull --ff-only origin main
 
-# PWA + APK (APK yoksa hata verir)
-.\tool\deploy.ps1 -SkipPwaBuild
-
-# Yalnız PWA:
+.\tool\iis_inspect.ps1
 .\tool\deploy.ps1 -SkipPwaBuild -SkipApk
-
-# Yeni PWA zip:
-.\tool\deploy.ps1 -SkipPwaBuild -FromZip ".\dist\teknofest-pwa-latest.zip"
-
-.\tool\iis_register_application.ps1 -SiteName "<mevcut site adi>"
+.\tool\iis_register_application.ps1
 ```
 
-`deploy.ps1` `-SkipPwaBuild` olmadan çalışmaz. APK `apk\` kaynağından
-`publish\app\downloads\` altına kopyalanır; PWA güncellemesi bu dosyayı silmez.
+`-SiteName "<mevcut site adi>"` yazmayın. Script binding’den (`testapp.limak.com.tr`)
+veya EnduransStaff/LTStaff uygulamasından siteyi kendi bulur.
 
-### 4) Health check (bu PC veya sunucu)
+Yalnızca gerçek ad vermek isterseniz `iis_inspect.ps1` çıktısındaki **Name**:
+
+```powershell
+.\tool\iis_register_application.ps1 -SiteName "Default Web Site"
+```
+
+### 4) Health check
+
+Bu IIS sunucusundan `https://testapp.limak.com.tr` genelde timeout verir (nginx/hairpin).
+Yerel kontrol:
+
+```powershell
+.\tool\health_check.ps1 -LocalOnly
+```
+
+Dışarıdan (bu PC / internet):
 
 ```powershell
 curl.exe -I https://testapp.limak.com.tr/teknofest
 curl.exe -I https://testapp.limak.com.tr/teknofest/app/version.json
 curl.exe -I https://testapp.limak.com.tr/teknofest/app/downloads/teknofest-yatay-latest.apk
-.\tool\health_check.ps1
 ```
 
-`web.config` `publish/` içindedir. Site köküne kural eklemeyin.
-
-Public hostname nginx 404 dönüyorsa edge `/teknofest` isteğini IIS application’a
-iletmelidir. Bu repo nginx conf’una dokunmaz.
+Public 404 ise nginx `/teknofest` isteğini IIS application’a iletmelidir.
 
 ## Directory Structure
 
@@ -255,6 +255,8 @@ C:\Users\yturak\Desktop\teknofest-Kiosk\
 | `version.json` HTML | `/app/` IIS fallback’e gidiyor; `publish/web.config` application’da mı? |
 | APK `text/html` | Aynı; MIME `application/vnd.android.package-archive` |
 | 404 tüm `/teknofest` | IIS application yok veya nginx `/teknofest` geçirmiyor |
+| curl 28 / timeout | IIS kutusundan public hostname açılmaz; `health_check.ps1 -LocalOnly` |
+| Parent node has no children | `-SiteName "<mevcut site adi>"` literal; `iis_inspect.ps1` kullanın |
 | 401.3 / boş site | Desktop ACL; `iis_register_application.ps1` app pool’a RX verir |
 | APK 404 | `apk\teknofest-yatay-latest.apk` kopyalanmadı; PWA zip APK taşımaz |
 | Eski APK iniyor | APK `no-store`; tarayıcı değil kiosk DownloadManager kullanır |
