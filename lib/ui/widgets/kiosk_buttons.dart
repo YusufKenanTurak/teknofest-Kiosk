@@ -112,17 +112,8 @@ class OutlineActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final metrics = KioskMetrics.of(MediaQuery.sizeOf(context));
 
-    final button = OutlinedButton.icon(
+    final button = OutlinedButton(
       onPressed: enabled ? onPressed : null,
-      icon: icon == null
-          ? const SizedBox.shrink()
-          : Icon(icon, size: metrics.sp(22)),
-      label: Text(
-        label,
-        textAlign: TextAlign.center,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
       style: OutlinedButton.styleFrom(
         foregroundColor: KioskColors.cream,
         side: BorderSide(
@@ -130,26 +121,43 @@ class OutlineActionButton extends StatelessWidget {
           width: 1.6,
         ),
         padding: EdgeInsets.symmetric(
-          horizontal: metrics.sp(24),
-          vertical: metrics.sp(16),
+          horizontal: metrics.sp(20),
+          vertical: metrics.sp(14),
         ),
+        minimumSize: Size(0, metrics.sp(64)),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         textStyle: TextStyle(
-          fontSize: metrics.sp(18),
+          fontSize: metrics.sp(16),
           fontWeight: FontWeight.w700,
           letterSpacing: 0.4,
+          height: 1.25,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(metrics.sp(18)),
         ),
       ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: metrics.sp(20)),
+            SizedBox(width: metrics.sp(8)),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              softWrap: true,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
 
     if (expanded) {
-      return SizedBox(
-        height: metrics.sp(72),
-        width: double.infinity,
-        child: button,
-      );
+      return SizedBox(width: double.infinity, child: button);
     }
 
     return ConstrainedBox(

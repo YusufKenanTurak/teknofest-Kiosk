@@ -13,31 +13,41 @@ class MinistryMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = KioskMetrics.of(MediaQuery.sizeOf(context));
-    final logoSize = metrics.sp(120);
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        _WhiteLogoPlate(
-          assetPath: assetPath,
-          semanticsLabel: KioskCopy.ministryName,
-          height: logoSize,
-          width: logoSize,
-          circular: true,
-        ),
-        SizedBox(width: metrics.sp(16)),
-        Text(
-          KioskCopy.ministryNameStacked,
-          style: TextStyle(
-            color: KioskColors.cream,
-            fontSize: metrics.sp(20),
-            fontWeight: FontWeight.w700,
-            height: 1.22,
-            letterSpacing: 0.1,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : metrics.size.width;
+        final logoSize = math.min(
+          metrics.sp(120),
+          math.max(52.0, maxW * 0.34),
+        );
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _CircularLogoBadge(
+              assetPath: assetPath,
+              semanticsLabel: KioskCopy.ministryName,
+              diameter: logoSize,
+            ),
+            SizedBox(width: metrics.sp(12)),
+            Flexible(
+              child: Text(
+                KioskCopy.ministryNameStacked,
+                style: TextStyle(
+                  color: KioskColors.cream,
+                  fontSize: metrics.sp(20),
+                  fontWeight: FontWeight.w700,
+                  height: 1.22,
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -59,26 +69,71 @@ class TeknofestMark extends StatelessWidget {
   }
 }
 
+class _CircularLogoBadge extends StatelessWidget {
+  const _CircularLogoBadge({
+    required this.assetPath,
+    required this.semanticsLabel,
+    required this.diameter,
+  });
+
+  final String assetPath;
+  final String semanticsLabel;
+  final double diameter;
+
+  @override
+  Widget build(BuildContext context) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheW = (diameter * math.max(dpr, 2.0)).round().clamp(64, 2048);
+
+    return Semantics(
+      image: true,
+      label: semanticsLabel,
+      child: SizedBox(
+        key: const Key('ministry-logo-badge'),
+        width: diameter,
+        height: diameter,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              assetPath,
+              width: diameter,
+              height: diameter,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              filterQuality: FilterQuality.medium,
+              isAntiAlias: true,
+              gaplessPlayback: true,
+              cacheWidth: cacheW,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _WhiteLogoPlate extends StatelessWidget {
   const _WhiteLogoPlate({
     required this.assetPath,
     required this.semanticsLabel,
     required this.height,
     required this.width,
-    this.circular = false,
   });
 
   final String assetPath;
   final String semanticsLabel;
   final double height;
   final double width;
-  final bool circular;
 
   @override
   Widget build(BuildContext context) {
     final metrics = KioskMetrics.of(MediaQuery.sizeOf(context));
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    final pad = metrics.sp(circular ? 7 : 10);
+    final pad = metrics.sp(10);
     final innerW = math.max(1.0, width - pad * 2);
     final innerH = math.max(1.0, height - pad * 2);
     final decodeScale = math.max(dpr, 2.0);
@@ -94,8 +149,7 @@ class _WhiteLogoPlate extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: Colors.white,
-          shape: circular ? BoxShape.circle : BoxShape.rectangle,
-          borderRadius: circular ? null : BorderRadius.circular(metrics.sp(16)),
+          borderRadius: BorderRadius.circular(metrics.sp(16)),
         ),
         child: Image.asset(
           assetPath,

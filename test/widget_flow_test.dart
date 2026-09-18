@@ -36,7 +36,9 @@ void main() {
           timeoutDisplayDuration: Duration.zero,
         );
     addTearDown(quiz.dispose);
-    await tester.pumpWidget(TeknofestKioskApp(controller: quiz));
+    await tester.pumpWidget(
+      TeknofestKioskApp(key: ObjectKey(quiz), controller: quiz),
+    );
     await tester.pump();
     return quiz;
   }
@@ -239,5 +241,65 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text(QuizCatalog.startTitle), findsOneWidget);
     expect(find.text('SORU 1'), findsNothing);
+  });
+
+  testWidgets('result CTAs stay above the kiosk footer on compact screens', (
+    tester,
+  ) async {
+    const sizes = <Size>[
+      Size(1920, 1080),
+      Size(1366, 768),
+      Size(1024, 768),
+      Size(844, 390),
+      Size(430, 932),
+      Size(390, 844),
+      Size(375, 667),
+      Size(320, 568),
+    ];
+
+    for (final size in sizes) {
+      final quiz = QuizController(
+        advanceDelay: Duration.zero,
+        calculatingDelay: Duration.zero,
+        idleTimeout: Duration.zero,
+        timeoutDisplayDuration: Duration.zero,
+      );
+      await pumpApp(tester, size: size, controller: quiz);
+      expect(
+        find.byKey(const Key('start-button')),
+        findsOneWidget,
+        reason: 'start screen missing at $size',
+      );
+      await tester.tap(find.byKey(const Key('start-button')));
+      await tester.pump();
+      for (var i = 0; i < 15; i++) {
+        await tester.ensureVisible(find.byKey(const Key('option-A')));
+        await tester.tap(find.byKey(const Key('option-A')));
+        await tester.pump();
+      }
+
+      expect(find.byKey(const Key('discover-tmk-button')), findsOneWidget);
+      expect(find.byKey(const Key('kiosk-footer')), findsOneWidget);
+
+      final cta = tester.getRect(find.byKey(const Key('discover-tmk-button')));
+      final footer = tester.getRect(find.byKey(const Key('kiosk-footer')));
+      expect(
+        cta.overlaps(footer),
+        isFalse,
+        reason: 'CTA overlaps footer at $size',
+      );
+      expect(
+        cta.bottom <= footer.top + 0.5,
+        isTrue,
+        reason: 'CTA must sit above footer at $size (cta=$cta footer=$footer)',
+      );
+
+      final badge = tester.getSize(find.byKey(const Key('ministry-logo-badge')));
+      expect(
+        badge.width,
+        badge.height,
+        reason: 'ministry badge must be circular at $size',
+      );
+    }
   });
 }

@@ -27,8 +27,12 @@ class KioskFrame extends StatelessWidget {
                 ? Column(
                     children: [
                       const KioskHeader(),
-                      Expanded(child: child),
-                      const KioskFooter(),
+                      Expanded(
+                        child: ClipRect(
+                          child: child,
+                        ),
+                      ),
+                      const KioskFooter(key: Key('kiosk-footer')),
                     ],
                   )
                 : child,

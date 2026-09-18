@@ -19,6 +19,7 @@ class StartScreen extends StatelessWidget {
     return Padding(
       padding: metrics.screenPadding,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             flex: 11,
@@ -28,33 +29,44 @@ class StartScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const MinistryMark(),
-                  const Spacer(),
-                  Text(
-                    QuizCatalog.startTitle,
-                    key: const Key('start-title'),
-                    style: TextStyle(
-                      color: KioskColors.cream,
-                      fontSize: metrics.sp(46),
-                      fontWeight: FontWeight.w800,
-                      height: 1.12,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                  SizedBox(height: metrics.sp(22)),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: metrics.sp(760)),
-                    child: Text(
-                      QuizCatalog.startBody,
-                      key: const Key('start-body'),
-                      style: TextStyle(
-                        color: KioskColors.cream.withValues(alpha: 0.86),
-                        fontSize: metrics.sp(22),
-                        fontWeight: FontWeight.w400,
-                        height: 1.45,
+                  SizedBox(height: metrics.sp(16)),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            QuizCatalog.startTitle,
+                            key: const Key('start-title'),
+                            style: TextStyle(
+                              color: KioskColors.cream,
+                              fontSize: metrics.sp(46),
+                              fontWeight: FontWeight.w800,
+                              height: 1.12,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          SizedBox(height: metrics.sp(22)),
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: metrics.sp(760),
+                            ),
+                            child: Text(
+                              QuizCatalog.startBody,
+                              key: const Key('start-body'),
+                              style: TextStyle(
+                                color: KioskColors.cream.withValues(alpha: 0.86),
+                                fontSize: metrics.sp(22),
+                                fontWeight: FontWeight.w400,
+                                height: 1.45,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  SizedBox(height: metrics.sp(36)),
+                  SizedBox(height: metrics.sp(16)),
                   GradientButton(
                     key: const Key('start-button'),
                     label: QuizCatalog.startActionLabel,
@@ -62,7 +74,7 @@ class StartScreen extends StatelessWidget {
                     icon: Icons.arrow_forward_rounded,
                     onPressed: controller.startTest,
                   ),
-                  const Spacer(),
+                  SizedBox(height: metrics.sp(12)),
                   Text(
                     KioskCopy.startEyebrow,
                     style: TextStyle(

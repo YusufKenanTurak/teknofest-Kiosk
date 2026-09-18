@@ -28,6 +28,7 @@ class ResultScreen extends StatelessWidget {
     return Padding(
       padding: metrics.screenPadding,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             flex: 11,
@@ -37,82 +38,96 @@ class ResultScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const MinistryMark(),
-                  const Spacer(),
-                  Text(
-                    KioskCopy.resultEyebrow,
-                    style: TextStyle(
-                      color: KioskColors.cyan,
-                      fontSize: metrics.sp(14),
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.8,
+                  SizedBox(height: metrics.sp(16)),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            KioskCopy.resultEyebrow,
+                            style: TextStyle(
+                              color: KioskColors.cyan,
+                              fontSize: metrics.sp(14),
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.8,
+                            ),
+                          ),
+                          SizedBox(height: metrics.sp(16)),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: metrics.sp(88),
+                                height: metrics.sp(88),
+                                decoration: BoxDecoration(
+                                  color: visual.accent.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(
+                                    metrics.sp(22),
+                                  ),
+                                  border: Border.all(
+                                    color: visual.accent.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: showEmoji
+                                    ? Text(
+                                        content.emoji,
+                                        key: const Key('result-emoji'),
+                                        style: TextStyle(
+                                          fontSize: metrics.sp(40),
+                                        ),
+                                      )
+                                    : Icon(
+                                        visual.icon,
+                                        key: const Key('result-emoji'),
+                                        color: visual.accent,
+                                        size: metrics.sp(42),
+                                      ),
+                              ),
+                              SizedBox(width: metrics.sp(18)),
+                              Expanded(
+                                child: Text(
+                                  content.title,
+                                  key: const Key('result-title'),
+                                  style: TextStyle(
+                                    color: KioskColors.cream,
+                                    fontSize: metrics.sp(40),
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.1,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: metrics.sp(20)),
+                          Text(
+                            content.description,
+                            key: const Key('result-description'),
+                            style: TextStyle(
+                              color: KioskColors.cream.withValues(alpha: 0.86),
+                              fontSize: metrics.sp(20),
+                              height: 1.45,
+                            ),
+                          ),
+                          SizedBox(height: metrics.sp(18)),
+                          Text(
+                            content.slogan,
+                            key: const Key('result-slogan'),
+                            style: TextStyle(
+                              color: visual.accent,
+                              fontSize: metrics.sp(22),
+                              fontWeight: FontWeight.w700,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   SizedBox(height: metrics.sp(16)),
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: metrics.sp(88),
-                        height: metrics.sp(88),
-                        decoration: BoxDecoration(
-                          color: visual.accent.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(metrics.sp(22)),
-                          border: Border.all(
-                            color: visual.accent.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: showEmoji
-                            ? Text(
-                                content.emoji,
-                                key: const Key('result-emoji'),
-                                style: TextStyle(fontSize: metrics.sp(40)),
-                              )
-                            : Icon(
-                                visual.icon,
-                                key: const Key('result-emoji'),
-                                color: visual.accent,
-                                size: metrics.sp(42),
-                              ),
-                      ),
-                      SizedBox(width: metrics.sp(18)),
-                      Expanded(
-                        child: Text(
-                          content.title,
-                          key: const Key('result-title'),
-                          style: TextStyle(
-                            color: KioskColors.cream,
-                            fontSize: metrics.sp(40),
-                            fontWeight: FontWeight.w800,
-                            height: 1.1,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: metrics.sp(20)),
-                  Text(
-                    content.description,
-                    key: const Key('result-description'),
-                    style: TextStyle(
-                      color: KioskColors.cream.withValues(alpha: 0.86),
-                      fontSize: metrics.sp(20),
-                      height: 1.45,
-                    ),
-                  ),
-                  SizedBox(height: metrics.sp(18)),
-                  Text(
-                    content.slogan,
-                    key: const Key('result-slogan'),
-                    style: TextStyle(
-                      color: visual.accent,
-                      fontSize: metrics.sp(22),
-                      fontWeight: FontWeight.w700,
-                      height: 1.3,
-                    ),
-                  ),
-                  const Spacer(),
-                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Flexible(
                         child: OutlineActionButton(
