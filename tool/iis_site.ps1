@@ -120,7 +120,10 @@ function Get-TeknofestLocalHealthTargets {
         if ($scheme -ne "http" -and $scheme -ne "https") {
             continue
         }
-        $url = "${scheme}://127.0.0.1:${port}/${ApplicationName}"
+        if ($header -ne $HostName) {
+            continue
+        }
+        $url = "${scheme}://127.0.0.1:${port}/${ApplicationName}/"
         $key = "$url|$header"
         if ($seen.ContainsKey($key)) {
             continue
@@ -134,8 +137,8 @@ function Get-TeknofestLocalHealthTargets {
     }
 
     foreach ($fallback in @(
-            @{ Url = "http://127.0.0.1/${ApplicationName}";  Insecure = $false },
-            @{ Url = "https://127.0.0.1/${ApplicationName}"; Insecure = $true }
+            @{ Url = "http://127.0.0.1/${ApplicationName}/";  Insecure = $false },
+            @{ Url = "https://127.0.0.1/${ApplicationName}/"; Insecure = $true }
         )) {
         $key = "$($fallback.Url)|$HostName"
         if ($seen.ContainsKey($key)) {

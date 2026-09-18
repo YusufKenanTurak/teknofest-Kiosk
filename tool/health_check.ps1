@@ -1,5 +1,5 @@
 # PWA / version.json / APK dogrular.
-# IIS sunucusu public hostname'e (hairpin) cikamayabilir; once yerel binding denenir.
+# IIS /teknofest -> /teknofest/ 301'ini public hostname'e takip etmez; yerelde slash ile 200 arar.
 #
 #   .\tool\health_check.ps1 -LocalOnly
 #   .\tool\health_check.ps1 -BaseUrl "https://testapp.limak.com.tr/teknofest"
@@ -58,11 +58,77 @@ function Invoke-CurlHead {
     }
 }
 
+function ConvertTo-LocalFollowUrl {
+    param(
+        [string]$Location,
+        [string]$OriginalUrl
+    )
+    if ([string]::IsNullOrWhiteSpace($Location)) {
+        return $null
+    }
+    try {
+        $orig = [Uri]$OriginalUrl
+        if ($Location -match '^https?://') {
+            $path = ([Uri]$Location).AbsolutePath
+        }
+        else {
+            $path = $Location.Split('?')[0]
+        }
+        if ($path -notmatch '^/teknofest') {
+            return $null
+        }
+        if (-not $path.EndsWith("/")) {
+            $path = "$path/"
+        }
+        $portPart = ""
+        if (-not (($orig.Scheme -eq "http" -and $orig.Port -eq 80) -or ($orig.Scheme -eq "https" -and $orig.Port -eq 443))) {
+            $portPart = ":$($orig.Port)"
+        }
+        return "$($orig.Scheme)://127.0.0.1${portPart}$path"
+    }
+    catch {
+        return $null
+    }
+}
+
+function Invoke-LocalPwaHead {
+    param($Probe)
+
+    $url = $Probe.Url
+    $hit = $null
+    for ($i = 0; $i -lt 4; $i++) {
+        Write-Host "Denenecek: $($Probe.Label)  $url" -ForegroundColor DarkGray
+        $hit = Invoke-CurlHead -Url $url -RequestHost $Probe.RequestHost -SkipCertCheck ([bool]$Probe.SkipCert)
+        if ($hit.ExitCode -ne 0 -or $hit.Status -eq 0) {
+            return $hit
+        }
+        if ($hit.Status -eq 200) {
+            $hit | Add-Member -NotePropertyName FollowedUrl -NotePropertyValue $url -Force
+            return $hit
+        }
+        if ($hit.Status -eq 301 -or $hit.Status -eq 302) {
+            $location = Get-Header $hit.Text "Location"
+            $next = ConvertTo-LocalFollowUrl -Location $location -OriginalUrl $url
+            if ([string]::IsNullOrWhiteSpace($next) -or $next -eq $url) {
+                $hit | Add-Member -NotePropertyName FollowedUrl -NotePropertyValue $url -Force
+                return $hit
+            }
+            Write-Host "  301 yerel: $location -> $next" -ForegroundColor DarkGray
+            $url = $next
+            continue
+        }
+        $hit | Add-Member -NotePropertyName FollowedUrl -NotePropertyValue $url -Force
+        return $hit
+    }
+    $hit | Add-Member -NotePropertyName FollowedUrl -NotePropertyValue $url -Force
+    return $hit
+}
+
 $probes = @()
 
 if (-not $LocalOnly -and -not [string]::IsNullOrWhiteSpace($BaseUrl)) {
     $probes += [pscustomobject]@{
-        Url         = $BaseUrl.TrimEnd("/")
+        Url         = $BaseUrl.TrimEnd("/") + "/"
         RequestHost = $null
         SkipCert    = $false
         Label       = "public"
@@ -73,7 +139,7 @@ try {
     . (Join-Path $PSScriptRoot "iis_site.ps1")
     Import-Module WebAdministration -ErrorAction Stop
     $site = Resolve-TeknofestIisSite -SiteName $SiteName
-    foreach ($target in @(Get-TeknofestLocalHealthTargets -Site $site)) {
+    foreach ($target in @(Get-TeknofestLocalHealthTargets -Site $site -HostName $HostHeader)) {
         $probes += [pscustomobject]@{
             Url         = $target.Url
             RequestHost = $target.HostHeader
@@ -90,13 +156,13 @@ catch {
 
 if ($probes.Count -eq 0) {
     $probes += [pscustomobject]@{
-        Url         = "http://127.0.0.1/teknofest"
+        Url         = "http://127.0.0.1/teknofest/"
         RequestHost = $HostHeader
         SkipCert    = $false
         Label       = "local http 80"
     }
     $probes += [pscustomobject]@{
-        Url         = "https://127.0.0.1/teknofest"
+        Url         = "https://127.0.0.1/teknofest/"
         RequestHost = $HostHeader
         SkipCert    = $true
         Label       = "local https 443"
@@ -106,16 +172,19 @@ if ($probes.Count -eq 0) {
 $chosen = $null
 $failures = @()
 foreach ($probe in $probes) {
-    Write-Host "Denenecek: $($probe.Label)  $($probe.Url)" -ForegroundColor DarkGray
-    $hit = Invoke-CurlHead -Url $probe.Url -RequestHost $probe.RequestHost -SkipCertCheck ([bool]$probe.SkipCert)
+    $hit = Invoke-LocalPwaHead $probe
     if ($hit.ExitCode -ne 0 -or $hit.Status -eq 0) {
         $failures += "$($probe.Label): baglanilamadi (curl $($hit.ExitCode))"
         continue
     }
+    $followed = $hit.FollowedUrl
+    if ([string]::IsNullOrWhiteSpace($followed)) {
+        $followed = $probe.Url
+    }
     $chosen = [pscustomobject]@{
         Probe   = $probe
         Head    = $hit
-        BaseUrl = $probe.Url.TrimEnd("/")
+        BaseUrl = $followed.TrimEnd("/")
     }
     if ($hit.Status -eq 200) {
         break
