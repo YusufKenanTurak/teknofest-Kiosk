@@ -1,0 +1,7 @@
+* text=auto
+*.ps1 text eol=crlf
+*.sh text eol=lf
+*.png binary
+*.apk binary
+*.wasm binary
+*.otf binary

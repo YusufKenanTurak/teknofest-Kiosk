@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  OPTIONAL. Do not replace the site-level web.config with this file.
+
+  Only insert these rules if /teknofest is a plain folder under the site
+  root AND you cannot create an IIS Application. Keep existing
+  EnduransStaff / LTStaff / ANKStaff / testcontainer rules unchanged.
+
+  Preferred: IIS Application + publish/web.config (no site-level change).
+-->
+<configuration>
+  <system.webServer>
+    <rewrite>
+      <rules>
+        <rule name="Teknofest Version JSON" stopProcessing="true">
+          <match url="^teknofest/app/version\.json$" ignoreCase="true" />
+          <action type="None" />
+        </rule>
+        <rule name="Teknofest APK" stopProcessing="true">
+          <match url="^teknofest/app/downloads/(.*\.apk)$" ignoreCase="true" />
+          <action type="None" />
+        </rule>
+      </rules>
+    </rewrite>
+  </system.webServer>
+</configuration>

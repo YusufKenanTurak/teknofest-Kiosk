@@ -1,0 +1,14 @@
+{
+    "version":  "1.0.0",
+    "versionCode":  1,
+    "build":  1,
+    "released_at":  "2026-09-18T09:18:42Z",
+    "force_logout":  false,
+    "notes":  "Initial PWA and IIS publish",
+    "android":  {
+                    "version":  "1.0.0",
+                    "versionCode":  1,
+                    "build":  1,
+                    "apk_url":  "downloads/teknofest-yatay-latest.apk"
+                }
+}

@@ -1,0 +1,25 @@
+name: teknofest_kiosk
+description: Teknofest yatay kiosk mühendislik yatkınlık testi
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.2
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/kiosk_city_hero.png
+    - assets/images/logo_bakanlik.png
+    - assets/images/logo_teknofest.png

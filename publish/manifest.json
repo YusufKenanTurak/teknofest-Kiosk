@@ -1,0 +1,37 @@
+{
+    "name": "Teknofest Kiosk",
+    "short_name": "Teknofest",
+    "id": "/teknofest/",
+    "start_url": "/teknofest/",
+    "scope": "/teknofest/",
+    "display": "standalone",
+    "background_color": "#05111F",
+    "theme_color": "#05111F",
+    "description": "Teknofest yatay kiosk muhendislik yatkinlik testi",
+    "orientation": "landscape-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

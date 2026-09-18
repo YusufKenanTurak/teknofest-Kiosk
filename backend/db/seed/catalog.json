@@ -1,0 +1,212 @@
+{
+  "departments": [
+    {
+      "code": "B",
+      "name": "Bilgisayar Mühendisliği",
+      "description": "Problemlere farklı açılardan bakıyor, teknolojiyle çözüm üretmekten keyif alıyorsun. Kodlar, algoritmalar ve dijital dünyayı şekillendirmek sana göre olabilir.",
+      "slogan": "Geleceği kodla, çözümünü yarat!",
+      "emoji": "💻",
+      "sort_order": 1
+    },
+    {
+      "code": "K",
+      "name": "Kimya Mühendisliği",
+      "description": "Merak ediyor, deniyor, gözlemliyor ve “neden?” sorusunun peşinden gidiyorsun. Maddelerin dünyasını keşfetmek ve yeni çözümler üretmek sana göre olabilir.",
+      "slogan": "Keşfet, dönüştür, geleceği üret!",
+      "emoji": "🧪",
+      "sort_order": 2
+    },
+    {
+      "code": "Ç",
+      "name": "Çevre Mühendisliği",
+      "description": "Doğayı, kaynakları ve sürdürülebilir yaşamı önemsiyor; problemlere bütünsel çözümler bulmayı seviyorsun.",
+      "slogan": "Daha iyi bir gelecek için dünyayı dönüştür!",
+      "emoji": "🌱",
+      "sort_order": 3
+    },
+    {
+      "code": "M",
+      "name": "Makine Mühendisliği",
+      "description": "Bir şeyin nasıl çalıştığını merak ediyor, parçaları bir araya getirerek yeni şeyler tasarlamaktan hoşlanıyorsun.",
+      "slogan": "Tasarla, üret, harekete geçir!",
+      "emoji": "⚙️",
+      "sort_order": 4
+    },
+    {
+      "code": "E",
+      "name": "Elektrik-Elektronik Mühendisliği",
+      "description": "Enerji, teknoloji ve elektronik sistemlerin nasıl çalıştığını merak ediyorsun. Karmaşık sistemleri çözmek ve yeni teknolojiler geliştirmek sana göre olabilir.",
+      "slogan": "Enerjini geleceğe bağla!",
+      "emoji": "⚡",
+      "sort_order": 5
+    },
+    {
+      "code": "İ",
+      "name": "Endüstri Mühendisliği",
+      "description": "Büyük resmi görmeyi, sistemleri analiz etmeyi ve işleri daha iyi, hızlı ve verimli hale getirmeyi seviyorsun.",
+      "slogan": "Sistemi gör, çözümü geliştir!",
+      "emoji": "📊",
+      "sort_order": 6
+    },
+    {
+      "code": "N",
+      "name": "İnşaat Mühendisliği",
+      "description": "Bir fikrin gerçeğe dönüşmesini görmek, sağlam ve güvenli yapılar tasarlamak ilgini çekiyor.",
+      "slogan": "Sağlam temellerle geleceği inşa et!",
+      "emoji": "️",
+      "sort_order": 7
+    }
+  ],
+  "questions": [
+    {
+      "number": 1,
+      "text": "Yeni bir teknoloji geliştirirken seni en çok hangisi heyecanlandırır?",
+      "options": [
+        {"code": "A", "text": "Bir cihazın nasıl çalıştığını keşfetmek.", "department": "M"},
+        {"code": "B", "text": "İnsanların hayatını kolaylaştıracak bir uygulama geliştirmek.", "department": "B"},
+        {"code": "C", "text": "Enerjiyi daha verimli kullanmanın yollarını bulmak.", "department": "E"},
+        {"code": "D", "text": "Üretim sürecini daha hızlı ve verimli hale getirmek.", "department": "İ"}
+      ]
+    },
+    {
+      "number": 2,
+      "text": "Bir şehirde yeni bir yaşam alanı tasarlıyorsun. Senin için en önemli konu hangisi olurdu?",
+      "options": [
+        {"code": "A", "text": "Binaların güvenli ve dayanıklı olması.", "department": "N"},
+        {"code": "B", "text": "Enerji tüketiminin mümkün olduğunca azaltılması.", "department": "Ç"},
+        {"code": "C", "text": "Ulaşım ve günlük yaşamın daha düzenli işlemesi.", "department": "İ"},
+        {"code": "D", "text": "Akıllı teknolojilerle yaşamın kolaylaştırılması.", "department": "E"}
+      ]
+    },
+    {
+      "number": 3,
+      "text": "Bir laboratuvarda yeni bir ürün geliştireceksin. İlk olarak neyi merak edersin?",
+      "options": [
+        {"code": "A", "text": "Kullanılan maddelerin nasıl tepkimeye girdiğini.", "department": "K"},
+        {"code": "B", "text": "Ürünün üretim sürecinin nasıl optimize edilebileceğini.", "department": "İ"},
+        {"code": "C", "text": "Ürünün doğaya etkisinin ne olacağını.", "department": "Ç"},
+        {"code": "D", "text": "Ürünün hangi mekanik sistemle çalışacağını.", "department": "M"}
+      ]
+    },
+    {
+      "number": 4,
+      "text": "Bir robot tasarlama şansın olsa hangi konuya odaklanırdın?",
+      "options": [
+        {"code": "A", "text": "Robotun hareket mekanizmasını geliştirmeye.", "department": "M"},
+        {"code": "B", "text": "Robotun çevresini algılayabilmesini sağlamaya.", "department": "E"},
+        {"code": "C", "text": "Robotun kendi kararlarını verebilmesini sağlayacak sistemi geliştirmeye.", "department": "B"},
+        {"code": "D", "text": "Robotun üretim sürecini daha verimli hale getirmeye.", "department": "İ"}
+      ]
+    },
+    {
+      "number": 5,
+      "text": "Bir gölde kirlilik fark ettin. İlk olarak hangisini araştırmak istersin?",
+      "options": [
+        {"code": "A", "text": "Kirliliğin kaynağını ve ekosisteme etkisini.", "department": "Ç"},
+        {"code": "B", "text": "Sudaki maddelerin özelliklerini.", "department": "K"},
+        {"code": "C", "text": "Kirliliği sürekli takip edebilecek bir ölçüm sistemi geliştirmeyi.", "department": "E"},
+        {"code": "D", "text": "Kirlilik verilerini analiz ederek değişimi takip etmeyi.", "department": "B"}
+      ]
+    },
+    {
+      "number": 6,
+      "text": "Bir binanın tasarımında seni en çok hangi konu ilgilendirir?",
+      "options": [
+        {"code": "A", "text": "Binanın taşıyıcı sisteminin güvenli olması.", "department": "N"},
+        {"code": "B", "text": "Binanın enerji sistemlerinin verimli çalışması.", "department": "E"},
+        {"code": "C", "text": "Kullanılan malzemelerin özellikleri ve dayanıklılığı.", "department": "K"},
+        {"code": "D", "text": "Binanın çevreye etkisini en aza indirmek.", "department": "Ç"}
+      ]
+    },
+    {
+      "number": 7,
+      "text": "Bir uygulamanın sürekli hata verdiğini düşün. Ne yaparsın?",
+      "options": [
+        {"code": "A", "text": "Sorunu adım adım analiz edip hatanın kaynağını bulurum.", "department": "B"},
+        {"code": "B", "text": "Kullanıcıların uygulamayı nasıl kullandığını incelerim.", "department": "İ"},
+        {"code": "C", "text": "Sistemin elektronik ve donanım tarafını kontrol ederim.", "department": "E"},
+        {"code": "D", "text": "Uygulamanın daha hızlı çalışması için sistemi yeniden tasarlarım.", "department": "M"}
+      ]
+    },
+    {
+      "number": 8,
+      "text": "Bir fabrikanın daha sürdürülebilir hale getirilmesi isteniyor. Sen hangi konuya odaklanırsın?",
+      "options": [
+        {"code": "A", "text": "Atıkların azaltılması ve doğru şekilde yönetilmesine.", "department": "Ç"},
+        {"code": "B", "text": "Üretimde kullanılan maddelerin daha verimli kullanılmasına.", "department": "K"},
+        {"code": "C", "text": "Üretim hattının daha verimli çalışmasına.", "department": "İ"},
+        {"code": "D", "text": "Makinelerin daha az enerji harcamasına.", "department": "M"}
+      ]
+    },
+    {
+      "number": 9,
+      "text": "Bir ürün tasarlarken senin için hangisi daha önemli olurdu?",
+      "options": [
+        {"code": "A", "text": "Kullanıcının ürünü kolay ve rahat kullanması.", "department": "İ"},
+        {"code": "B", "text": "Ürünün mekanik olarak sağlam ve işlevsel olması.", "department": "M"},
+        {"code": "C", "text": "Ürünün çevreye mümkün olduğunca az zarar vermesi.", "department": "Ç"},
+        {"code": "D", "text": "Ürünün elektronik sistemlerinin doğru çalışması.", "department": "E"}
+      ]
+    },
+    {
+      "number": 10,
+      "text": "Geleceğin şehirlerinde hangi fikri geliştirmek seni daha çok heyecanlandırır?",
+      "options": [
+        {"code": "A", "text": "Trafiği yapay zekâ ile yöneten akıllı sistemler.", "department": "B"},
+        {"code": "B", "text": "Doğal kaynakları koruyan sürdürülebilir şehir sistemleri.", "department": "Ç"},
+        {"code": "C", "text": "Deprem gibi afetlere karşı daha dayanıklı yapılar.", "department": "N"},
+        {"code": "D", "text": "Yenilenebilir enerjiyle çalışan akıllı altyapılar.", "department": "E"}
+      ]
+    },
+    {
+      "number": 11,
+      "text": "Bir deneyin sonucu beklediğin gibi çıkmadı. İlk tepkin ne olur?",
+      "options": [
+        {"code": "A", "text": "Deneyi farklı maddeler ve koşullarla tekrar denerim.", "department": "K"},
+        {"code": "B", "text": "Sonuçları veriler üzerinden karşılaştırırım.", "department": "B"},
+        {"code": "C", "text": "Deneyin çevresel etkilerini ve ortaya çıkan atıkları incelerim.", "department": "Ç"},
+        {"code": "D", "text": "Deney sistemindeki mekanik düzenekleri kontrol ederim.", "department": "M"}
+      ]
+    },
+    {
+      "number": 12,
+      "text": "Bir problemle karşılaştığında seni en iyi anlatan yaklaşım hangisi?",
+      "options": [
+        {"code": "A", "text": "“Bu sistemi daha sağlam nasıl hale getirebilirim?”", "department": "N"},
+        {"code": "B", "text": "“Bunu daha hızlı ve verimli nasıl yapabilirim?”", "department": "İ"},
+        {"code": "C", "text": "“Bunu teknolojiyle nasıl çözebilirim?”", "department": "B"},
+        {"code": "D", "text": "“Enerjiyi daha verimli nasıl kullanabilirim?”", "department": "E"}
+      ]
+    },
+    {
+      "number": 13,
+      "text": "Yeni bir ürünün geliştirme sürecinde hangi aşama sana daha ilgi çekici gelir?",
+      "options": [
+        {"code": "A", "text": "Ürünün hangi maddelerden oluşacağını belirlemek.", "department": "K"},
+        {"code": "B", "text": "Ürünün üretim hattını tasarlamak.", "department": "İ"},
+        {"code": "C", "text": "Ürünün doğaya bıraktığı etkiyi azaltmak.", "department": "Ç"},
+        {"code": "D", "text": "Ürünün fiziksel yapısını ve çalışma mekanizmasını geliştirmek.", "department": "M"}
+      ]
+    },
+    {
+      "number": 14,
+      "text": "Bir mühendis olarak dünyada hangi probleme çözüm üretmek isterdin?",
+      "options": [
+        {"code": "A", "text": "Daha güvenli ve dayanıklı yapılar geliştirmek.", "department": "N"},
+        {"code": "B", "text": "İnsanların hayatını kolaylaştıracak yeni dijital çözümler üretmek.", "department": "B"},
+        {"code": "C", "text": "Daha temiz ve verimli enerji teknolojileri geliştirmek.", "department": "E"},
+        {"code": "D", "text": "İklim ve çevre sorunlarına sürdürülebilir çözümler üretmek.", "department": "Ç"}
+      ]
+    },
+    {
+      "number": 15,
+      "text": "Kendine bir proje seçmen gerekse hangisini tercih ederdin?",
+      "options": [
+        {"code": "A", "text": "Yeni nesil bir makine veya robot tasarlamak.", "department": "M"},
+        {"code": "B", "text": "Yeni bir malzeme veya kimyasal ürün geliştirmek.", "department": "K"},
+        {"code": "C", "text": "Depreme dayanıklı yeni nesil bir yapı sistemi tasarlamak.", "department": "N"},
+        {"code": "D", "text": "Büyük bir sistemin işleyişini analiz ederek daha verimli hale getirmek.", "department": "İ"}
+      ]
+    }
+  ]
+}
