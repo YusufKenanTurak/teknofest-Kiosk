@@ -39,7 +39,7 @@ sunucuya ulaşılamazsa test yine açılır.
 - **Client:** Flutter / Dart, tek `QuizController` (ChangeNotifier). Named route yok.
 - **PWA:** `flutter build web --base-href /teknofest/` → statik dosyalar. Node process yok.
 - **Android:** `flutter build apk --release` + `croms_omega_auth` update sözleşmesi.
-- **IIS:** `publish/` klasörü `/teknofest` application physical path. Site-level rewrite’e dokunulmaz.
+- **IIS:** sunucuda `C:\Users\yturak\Desktop\teknofest-Kiosk\publish` klasörü `/teknofest` physical path. Site-level rewrite’e dokunulmaz. `inetpub` kullanılmaz.
 - **Backend (opsiyonel):** [backend/README.md](backend/README.md) PostgreSQL API. `API_BASE_URL` boşsa kiosk offline kalır.
 
 ## Local Development
@@ -141,9 +141,13 @@ Göreli `apk_url`, `{base}/app/` üzerinden çözülür:
 
 ## IIS Deployment
 
-**Sunucuda Flutter yoktur.** Derleme bu (geliştirme) PC’de alınır; IIS’e yalnızca
-`publish/` artifact’i kopyalanır. Mevcut site rewrite’leri (**EnduransStaff,
-LTStaff, ANKStaff, testcontainer**) değiştirilmez.
+**Sunucuda Flutter yoktur.** Derleme bu PC’de alınır. IIS host checkout:
+
+`C:\Users\yturak\Desktop\teknofest-Kiosk`
+
+`/teknofest` physical path yalnızca `publish\` (kaynak `lib\` servis edilmez).
+`C:\inetpub` kullanılmaz. Mevcut site rewrite’leri (**EnduransStaff, LTStaff,
+ANKStaff, testcontainer**) değiştirilmez.
 
 Ayrıntı: [deploy/iis/README.md](deploy/iis/README.md)
 
@@ -159,23 +163,25 @@ flutter test
 .\tool\package_release.ps1
 ```
 
-Çıktı: `dist\teknofest-iis-latest.zip` (`publish/` içeriği; APK varsa içinde).
+Çıktı: `dist\teknofest-iis-latest.zip`
 
-### 2) Artifact’i sunucuya kopyala
+### 2) Sunucuya koy
 
-Paylaşım varsa (bu PC’den, Flutter’sız kopya):
+Tüm repo + `publish\` zaten şurada olmalı:
+
+`C:\Users\yturak\Desktop\teknofest-Kiosk`
+
+Yeni zip varsa: `C:\Users\yturak\Desktop\teknofest-Kiosk\dist\teknofest-iis-latest.zip`
+
+Paylaşım ile yalnızca PWA:
 
 ```powershell
 .\tool\copy_publish.ps1 `
   -PublishDir ".\publish" `
-  -IisPhysicalPath "\\SUNUCU\C$\inetpub\wwwroot\teknofest"
+  -IisPhysicalPath "\\SUNUCU\C$\Users\yturak\Desktop\teknofest-Kiosk\publish"
 ```
 
-Yoksa zip’i RDP/USB ile `C:\inetpub\staging\` altına koyun.
-
-### 3) Sunucu — Flutter yok, sadece kopya + IIS
-
-İlk seferde script’ler için repo klonlanabilir; `flutter` kurulmaz, `build_web` çalışmaz.
+### 3) Sunucu — Flutter yok
 
 ```powershell
 Import-Module WebAdministration
@@ -183,31 +189,20 @@ Get-Website
 Get-WebApplication
 Get-WebBinding
 
-# Script'ler icin (bir kez; derleme yok)
-cd C:\inetpub\apps
-git clone https://github.com/YusufKenanTurak/teknofest-Kiosk.git teknofest-Kiosk
-cd teknofest-Kiosk
-git checkout main
+cd C:\Users\yturak\Desktop\teknofest-Kiosk
 
-# Zip'i ac (bu PC'den gelen paket)
-$drop = "C:\inetpub\staging\teknofest-drop"
-if (Test-Path $drop) { Remove-Item $drop -Recurse -Force }
-New-Item -ItemType Directory -Path $drop | Out-Null
-Expand-Archive -Path "C:\inetpub\staging\teknofest-iis-latest.zip" -DestinationPath $drop -Force
+# Dosyalar zaten bu klasordeyse:
+.\tool\deploy.ps1 -SkipPwaBuild
 
-# Derleme yok; kopyalanan artifact IIS'e yazilir
-.\tool\deploy.ps1 `
-  -SkipPwaBuild `
-  -PublishDir $drop `
-  -IisPhysicalPath "C:\inetpub\wwwroot\teknofest"
+# Yeni zip geldiyse:
+.\tool\deploy.ps1 -SkipPwaBuild -FromZip ".\dist\teknofest-iis-latest.zip"
 
-# Application (bir kez). SiteName Get-Website ciktisindan.
-.\tool\iis_register_application.ps1 `
-  -SiteName "<mevcut site adi>" `
-  -PhysicalPath "C:\inetpub\wwwroot\teknofest"
+# Application (bir kez; SiteName = Get-Website). Physical path varsayilan publish\
+.\tool\iis_register_application.ps1 -SiteName "<mevcut site adi>"
 ```
 
-`deploy.ps1` `-SkipPwaBuild` olmadan çalışmaz (sunucuda derlemeyi reddeder).
+`deploy.ps1` `-SkipPwaBuild` olmadan çalışmaz. IIS application `publish\`
+dışına bakıyorsa `iis_register_application.ps1` physical path’i buraya çeker.
 
 ### 4) Health check (bu PC veya sunucu)
 
@@ -226,21 +221,24 @@ iletmelidir. Bu repo nginx conf’una dokunmaz.
 ## Directory Structure
 
 ```
-publish/                          IIS physical path
-  web.config                      /teknofest uygulama kurallari
-  index.html, flutter.js, ...     PWA
-  assets/, canvaskit/, icons/
-  app/
-    version.json                  no-cache JSON
-    downloads/
-      teknofest-yatay-latest.apk  gitignore; deploy korur
-tool/
-  build_web.ps1 / publish_web.ps1     bu PC
-  build_apk.ps1 / publish_apk.ps1     bu PC
-  package_release.ps1                 zip artifact
-  copy_publish.ps1 / deploy.ps1       IIS kopya, Flutter yok
-  health_check.ps1
-  iis_register_application.ps1
+C:\Users\yturak\Desktop\teknofest-Kiosk\   sunucu checkout (inetpub yok)
+  publish\                                IIS /teknofest physical path
+    web.config
+    index.html, flutter.js, ...
+    assets/, canvaskit/, icons/
+    app\
+      version.json
+      downloads\teknofest-yatay-latest.apk
+  drop\                                   zip acma (opsiyonel)
+  dist\                                   gelen zip (opsiyonel)
+  tool\
+    server_paths.ps1
+    build_web.ps1 / publish_web.ps1       bu PC
+    build_apk.ps1 / publish_apk.ps1       bu PC
+    package_release.ps1
+    copy_publish.ps1 / deploy.ps1
+    health_check.ps1
+    iis_register_application.ps1
 ```
 
 ## Update Flow
@@ -259,6 +257,7 @@ tool/
 | `version.json` HTML | `/app/` IIS fallback’e gidiyor; `publish/web.config` application’da mı? |
 | APK `text/html` | Aynı; MIME `application/vnd.android.package-archive` |
 | 404 tüm `/teknofest` | IIS application yok veya nginx `/teknofest` geçirmiyor |
+| 401.3 / boş site | Desktop ACL; `iis_register_application.ps1` app pool’a RX verir |
 | Eski APK iniyor | APK `no-store`; tarayıcı değil kiosk DownloadManager kullanır |
 | SW başka uygulamayı bozuyor | SW `/teknofest/flutter_service_worker.js` — `Service-Worker-Allowed: /` header’ı eklemeyin |
 | Diğer PWA’lar kırıldı | Site-level rewrite’e Teknofest kuralı yapıştırılmamalı |
@@ -274,8 +273,8 @@ curl.exe -I https://testapp.limak.com.tr/teknofest/app/downloads/teknofest-yatay
 Önceki zip’i tekrar açıp aynı `SkipPwaBuild` kopyasını çalıştırın:
 
 ```powershell
-Expand-Archive -Path "C:\inetpub\staging\teknofest-iis-<onceki>.zip" -DestinationPath "C:\inetpub\staging\teknofest-drop" -Force
-.\tool\deploy.ps1 -SkipPwaBuild -PublishDir "C:\inetpub\staging\teknofest-drop" -IisPhysicalPath "C:\inetpub\wwwroot\teknofest"
+cd C:\Users\yturak\Desktop\teknofest-Kiosk
+.\tool\deploy.ps1 -SkipPwaBuild -FromZip ".\dist\teknofest-iis-<onceki>.zip"
 ```
 
 APK yeni pakette yoksa mevcut `teknofest-yatay-latest.apk` silinmez.

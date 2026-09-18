@@ -1,10 +1,21 @@
 # IIS notes for testapp.limak.com.tr /teknofest
 
-## Build machine vs IIS server
+## Host layout
 
-Flutter SDK lives only on the developer PC. The IIS host copies a prebuilt
-`publish/` tree (or `dist\teknofest-iis-latest.zip`). Do not install Flutter
-on the server. `deploy.ps1` requires `-SkipPwaBuild` and never compiles.
+Flutter SDK lives only on the developer PC. On the IIS host the checkout is:
+
+`C:\Users\yturak\Desktop\teknofest-Kiosk`
+
+`/teknofest` physical path is **only** `publish\`:
+
+`C:\Users\yturak\Desktop\teknofest-Kiosk\publish`
+
+Do not point IIS at the repo root (`lib\`, `tool\` must not be served). Do not
+use `C:\inetpub\wwwroot`. `deploy.ps1` requires `-SkipPwaBuild` and never
+compiles.
+
+Desktop is a user profile path. `iis_register_application.ps1` grants
+`IIS_IUSRS`, `IUSR`, and the site app pool RX on `publish\`.
 
 ## Do not edit the site-level rewrite map
 
@@ -29,12 +40,13 @@ Get-Website
 Get-WebApplication
 Get-WebBinding
 
-.\tool\iis_register_application.ps1 `
-  -SiteName "<existing site name>" `
-  -PhysicalPath "C:\inetpub\wwwroot\teknofest"
+cd C:\Users\yturak\Desktop\teknofest-Kiosk
+.\tool\deploy.ps1 -SkipPwaBuild
+.\tool\iis_register_application.ps1 -SiteName "<existing site name>"
 ```
 
-Physical path must be a **copy of `publish/`** (index.html + app/ + web.config), not the Flutter source tree. Populate it with `copy_publish.ps1` / `deploy.ps1 -SkipPwaBuild` from a zip built on the developer PC.
+If `/teknofest` was previously registered under `inetpub`, the same command
+updates the application physical path to `publish\` on the Desktop checkout.
 
 ## Optional site-level fragment
 

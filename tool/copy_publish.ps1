@@ -1,8 +1,7 @@
 # Hazir publish/ artifact'ini IIS physical path'e kopyalar.
-# Flutter cagirmaz. /MIR kullanir ama production APK'yi korur.
+# Flutter cagirmaz. Ayni klasorse kopya atlar. Production APK korunur.
 #
-#   .\tool\copy_publish.ps1 -PublishDir ".\publish" -IisPhysicalPath "C:\inetpub\wwwroot\teknofest"
-#   .\tool\copy_publish.ps1 -PublishDir ".\publish" -IisPhysicalPath "\\SUNUCU\C$\inetpub\wwwroot\teknofest"
+#   .\tool\copy_publish.ps1 -PublishDir ".\publish" -IisPhysicalPath "C:\Users\yturak\Desktop\teknofest-Kiosk\publish"
 
 param(
     [Parameter(Mandatory = $true)]
@@ -12,26 +11,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-
-function Assert-SafeIisPath([string]$Path) {
-    $full = [System.IO.Path]::GetFullPath($Path)
-    $name = Split-Path $full -Leaf
-    if ($name -ne "teknofest") {
-        throw "IisPhysicalPath son klasor adi 'teknofest' olmali. Gelen: $full"
-    }
-    $forbidden = @(
-        "C:\inetpub\wwwroot",
-        "C:\inetpub",
-        "C:\Windows",
-        "C:\"
-    )
-    foreach ($item in $forbidden) {
-        if ($full.TrimEnd("\") -eq $item.TrimEnd("\")) {
-            throw "IisPhysicalPath yasak bir kok: $full"
-        }
-    }
-    return $full
-}
+. (Join-Path $PSScriptRoot "server_paths.ps1")
 
 function Assert-PublishDir([string]$Path) {
     $full = [System.IO.Path]::GetFullPath($Path)
@@ -49,7 +29,18 @@ function Assert-PublishDir([string]$Path) {
 }
 
 $publish = Assert-PublishDir $PublishDir
-$iisPath = Assert-SafeIisPath $IisPhysicalPath
+$iisPath = Assert-TeknofestIisPhysicalPath $IisPhysicalPath
+
+$samePath = [string]::Equals($publish.TrimEnd("\"), $iisPath.TrimEnd("\"), [System.StringComparison]::OrdinalIgnoreCase)
+if ($samePath) {
+    Write-Host "IIS physical path zaten publish (in-place): $iisPath" -ForegroundColor Cyan
+    Grant-TeknofestIisReadAccess -Path $iisPath
+    if (-not (Test-Path (Join-Path $iisPath "app\downloads\teknofest-yatay-latest.apk"))) {
+        Write-Host "APK bu klasorde yok; indirme URL'si 404 olabilir." -ForegroundColor Yellow
+    }
+    Write-Host "Kopyalama atlandi." -ForegroundColor Green
+    return
+}
 
 if (-not (Test-Path $iisPath)) {
     New-Item -ItemType Directory -Path $iisPath | Out-Null
@@ -86,4 +77,5 @@ else {
     Write-Host "APK bu pakette yok; indirme URL'si 404 olabilir." -ForegroundColor Yellow
 }
 
+Grant-TeknofestIisReadAccess -Path $iisPath
 Write-Host "Kopyalama tamam." -ForegroundColor Green

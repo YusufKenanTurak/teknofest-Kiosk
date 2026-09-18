@@ -1,20 +1,15 @@
-# Sunucuda Flutter YOK. Bu script yalnizca bu PC'de uretilmis publish/ artifact'ini
-# IIS physical path'e kopyalar. Derleme yapmaz.
+# Sunucuda Flutter YOK. Bu PC'de uretilmis publish/ artifact'ini
+# C:\Users\yturak\Desktop\teknofest-Kiosk\publish altina koyar / dogrular.
 #
-# Build PC:
-#   .\tool\build_web.ps1
-#   .\tool\publish_web.ps1
-#   .\tool\package_release.ps1
-#
-# Sunucu veya UNC ile IIS path:
-#   .\tool\deploy.ps1 -SkipPwaBuild -IisPhysicalPath "C:\inetpub\wwwroot\teknofest"
-#   .\tool\deploy.ps1 -SkipPwaBuild -PublishDir "C:\inetpub\staging\teknofest-drop" -IisPhysicalPath "C:\inetpub\wwwroot\teknofest"
+#   cd C:\Users\yturak\Desktop\teknofest-Kiosk
+#   .\tool\deploy.ps1 -SkipPwaBuild
+#   .\tool\deploy.ps1 -SkipPwaBuild -FromZip ".\dist\teknofest-iis-latest.zip"
 
 param(
-    [Parameter(Mandatory = $true)]
     [string]$IisPhysicalPath,
     [string]$PublishDir,
     [string]$SourceRoot,
+    [string]$FromZip,
     [string]$HealthBaseUrl = "https://testapp.limak.com.tr/teknofest",
     [switch]$SkipPwaBuild,
     [switch]$SkipBuild,
@@ -23,28 +18,25 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "server_paths.ps1")
 
 $skipCompile = $SkipPwaBuild -or $SkipBuild
 if (-not $skipCompile) {
     throw @"
 Sunucuda Flutter derlemesi yok.
 
-Once bu PC'de build alin, sonra artifact'i kopyalayin:
-
+Bu PC:
   .\tool\build_web.ps1
   .\tool\publish_web.ps1
   .\tool\package_release.ps1
 
-Ardindan sunucuda:
-
-  .\tool\deploy.ps1 -SkipPwaBuild -IisPhysicalPath `"C:\inetpub\wwwroot\teknofest`"
+Sunucu (C:\Users\yturak\Desktop\teknofest-Kiosk):
+  .\tool\deploy.ps1 -SkipPwaBuild
 "@
 }
 
-if ([string]::IsNullOrWhiteSpace($SourceRoot)) {
-    $SourceRoot = Split-Path -Parent $PSScriptRoot
-}
-$SourceRoot = [System.IO.Path]::GetFullPath($SourceRoot)
+$layout = Get-TeknofestDeployLayout -SourceRoot $SourceRoot
+$SourceRoot = $layout.ServerRoot
 
 if ($GitPull) {
     if (-not (Test-Path (Join-Path $SourceRoot ".git"))) {
@@ -60,20 +52,41 @@ if ($GitPull) {
     }
 }
 
+if ([string]::IsNullOrWhiteSpace($IisPhysicalPath)) {
+    $IisPhysicalPath = $layout.IisPhysicalPath
+}
+
+if (-not [string]::IsNullOrWhiteSpace($FromZip)) {
+    $zip = [System.IO.Path]::GetFullPath($FromZip)
+    if (-not (Test-Path $zip)) {
+        throw "Zip yok: $zip"
+    }
+    $drop = $layout.DropDir
+    if (Test-Path $drop) {
+        Remove-Item $drop -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $drop | Out-Null
+    Write-Host "Zip aciliyor: $zip -> $drop" -ForegroundColor Cyan
+    Expand-Archive -Path $zip -DestinationPath $drop -Force
+    $PublishDir = $drop
+}
+
 if ([string]::IsNullOrWhiteSpace($PublishDir)) {
-    $fromRepo = Join-Path $SourceRoot "publish"
-    if (Test-Path (Join-Path $fromRepo "index.html")) {
-        $PublishDir = $fromRepo
+    if (Test-Path (Join-Path $layout.PublishDir "index.html")) {
+        $PublishDir = $layout.PublishDir
     }
     elseif (Test-Path (Join-Path $SourceRoot "index.html")) {
-        $PublishDir = $SourceRoot
+        throw "PWA dosyalari repo kokunde. IIS yalnizca publish\ servis eder; zip'i drop'a acin veya publish\ icine koyun."
     }
     else {
-        throw "PublishDir bulunamadi. Zip'i acip -PublishDir verin veya bu PC'deki publish/ klasorunu kopyalayin."
+        throw "publish\ bulunamadi: $($layout.PublishDir). Zip icin: .\tool\deploy.ps1 -SkipPwaBuild -FromZip .\dist\teknofest-iis-latest.zip"
     }
 }
 
-Write-Host "SkipPwaBuild: Flutter calistirilmiyor." -ForegroundColor Cyan
+Write-Host "SkipPwaBuild: Flutter yok. root=$SourceRoot" -ForegroundColor Cyan
+Write-Host "  artifact: $PublishDir" -ForegroundColor Cyan
+Write-Host "  IIS:      $IisPhysicalPath" -ForegroundColor Cyan
+
 & (Join-Path $PSScriptRoot "copy_publish.ps1") -PublishDir $PublishDir -IisPhysicalPath $IisPhysicalPath
 
 if (-not $SkipHealthCheck) {
